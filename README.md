@@ -104,3 +104,9 @@ project-root/
        (the User Story steps) and assertions, without containing any CSS selectors.
 
 ```
+4. Execution References & Visuals
+Below are the reference screenshots documenting the code execution and test results:
+
+Reference 1 (Code/Result Snapshot): View Image 1
+
+Reference 2 (Code/Result Snapshot): View Image 2
