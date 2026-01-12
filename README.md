@@ -104,9 +104,9 @@ project-root/
        (the User Story steps) and assertions, without containing any CSS selectors.
 
 ```
-4. Execution References & Visuals
-Below are the reference screenshots documenting the code execution and test results:
+4. Project Resources & Deliverables
+Here are the direct links to the project artifacts (User Story document and Test Execution Video):
 
-Reference 1 (Code/Result Snapshot): View Image 1
+📄 User Story Document: View Document on Google Drive [https://drive.google.com/file/d/11SgALB-35kZfKL7KDc57U_5x4E1bOyIX/view?usp=drive_link]
 
-Reference 2 (Code/Result Snapshot): View Image 2
+🎥 Test Execution Video: Watch Demo on Google Drive [https://drive.google.com/file/d/1b2h0ApM08WOIxjLWlFZ7Z7HrU3TcdUKY/view?usp=drive_link]
