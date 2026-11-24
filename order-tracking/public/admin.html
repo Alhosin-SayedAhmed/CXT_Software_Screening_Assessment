@@ -1,0 +1,127 @@
+<!doctype html>
+<html lang="ar" dir="rtl">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <meta name="robots" content="noindex, nofollow">
+  <title>لوحة التحكم</title>
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Cairo:wght@400;600;700;800&display=swap">
+  <link rel="stylesheet" href="/styles.css">
+</head>
+<body>
+  <!-- تسجيل الدخول -->
+  <main class="wrap hidden" id="loginView">
+    <h1>لوحة التحكم</h1>
+    <p class="sub">ادخل باسورد الأدمن.</p>
+    <form class="card" id="loginForm">
+      <label for="password">الباسورد</label>
+      <input id="password" type="password" autocomplete="current-password" required>
+      <button type="submit" id="loginBtn" class="login-btn">دخول</button>
+      <div class="error hidden" id="loginError" role="alert"></div>
+    </form>
+  </main>
+
+  <!-- اللوحة -->
+  <main class="wrap wrap-wide hidden" id="dashView">
+    <header class="top">
+      <div>
+        <h1>الطلبات</h1>
+        <div class="meta">حدّث مرحلة أي طلب من القائمة، والعميل هيشوفها فوراً.</div>
+      </div>
+      <div class="row shrink">
+        <a class="btn btn-ghost btn-sm" href="/" target="_blank" rel="noopener">صفحة العميل</a>
+        <button class="btn-ghost btn-sm" id="logoutBtn" type="button">خروج</button>
+      </div>
+    </header>
+
+    <form class="card" id="addForm" autocomplete="off">
+      <h2>إضافة طلب جديد</h2>
+      <div class="grid-form">
+        <div>
+          <label for="fNumber">رقم الطلب *</label>
+          <input id="fNumber" name="order_number" required placeholder="نفس الرقم اللي على EasyOrders">
+        </div>
+        <div>
+          <label for="fStage">المرحلة</label>
+          <select id="fStage" name="stage"></select>
+        </div>
+        <div>
+          <label for="fName">اسم العميل</label>
+          <input id="fName" name="customer_name">
+        </div>
+        <div>
+          <label for="fPhone">موبايل العميل</label>
+          <input id="fPhone" name="phone" inputmode="tel" placeholder="01xxxxxxxxx">
+        </div>
+        <div class="full">
+          <label for="fProduct">المنتج</label>
+          <input id="fProduct" name="product" placeholder="مثلاً باور بانك 20000 مللي أمبير">
+        </div>
+        <div class="full">
+          <label for="fNote">ملاحظة تظهر للعميل (اختياري)</label>
+          <input id="fNote" name="note" placeholder="مثلاً: متوقع الشحن يوم الخميس">
+        </div>
+      </div>
+      <div class="error hidden" id="addError" role="alert"></div>
+      <p><button type="submit" id="addBtn">إضافة الطلب</button></p>
+    </form>
+
+    <section class="card">
+      <div class="chips" id="chips"></div>
+      <div class="toolbar">
+        <input id="search" type="search" placeholder="دوّر برقم الطلب أو الاسم أو الموبايل">
+      </div>
+      <div class="table-wrap">
+        <table>
+          <thead>
+            <tr>
+              <th>رقم الطلب</th>
+              <th>العميل</th>
+              <th>المنتج</th>
+              <th>المرحلة</th>
+              <th>آخر تحديث</th>
+              <th></th>
+            </tr>
+          </thead>
+          <tbody id="rows"></tbody>
+        </table>
+      </div>
+      <div class="empty hidden" id="empty">مفيش طلبات لسه.</div>
+    </section>
+  </main>
+
+  <dialog id="editDialog">
+    <form id="editForm" method="dialog">
+      <h2 id="editTitle">تعديل الطلب</h2>
+      <div class="grid-form">
+        <div>
+          <label for="eName">اسم العميل</label>
+          <input id="eName" name="customer_name">
+        </div>
+        <div>
+          <label for="ePhone">موبايل العميل</label>
+          <input id="ePhone" name="phone" inputmode="tel">
+        </div>
+        <div class="full">
+          <label for="eProduct">المنتج</label>
+          <input id="eProduct" name="product">
+        </div>
+        <div class="full">
+          <label for="eNote">ملاحظة تظهر للعميل</label>
+          <textarea id="eNote" name="note"></textarea>
+        </div>
+      </div>
+      <div class="error hidden" id="editError" role="alert"></div>
+      <p class="actions">
+        <button type="submit" value="save" id="saveBtn">حفظ</button>
+        <button type="button" class="btn-ghost" id="cancelBtn">إلغاء</button>
+      </p>
+    </form>
+  </dialog>
+
+  <div class="toast hidden" id="toast" role="status"></div>
+  <script src="/admin.js"></script>
+</body>
+</html>

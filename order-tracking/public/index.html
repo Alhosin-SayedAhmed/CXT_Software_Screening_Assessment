@@ -1,0 +1,50 @@
+<!doctype html>
+<html lang="ar" dir="rtl">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>تتبع طلبك</title>
+  <meta name="description" content="اعرف طلبك وصل لأنهي مرحلة في التصنيع والشحن">
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Cairo:wght@400;600;700;800&display=swap">
+  <link rel="stylesheet" href="/styles.css">
+</head>
+<body>
+  <main class="wrap">
+    <header class="top">
+      <a class="brand" id="storeLink" href="/">تتبع الطلبات</a>
+    </header>
+
+    <h1>تتبع طلبك</h1>
+    <p class="sub">اكتب رقم الطلب اللي وصلك بعد الشراء، وهتعرف طلبك في أنهي مرحلة.</p>
+
+    <form class="card" id="trackForm" novalidate>
+      <label for="orderInput">رقم الطلب</label>
+      <div class="row">
+        <input id="orderInput" name="order" inputmode="numeric" autocomplete="off" placeholder="مثلاً 10234" required>
+        <button class="shrink" type="submit" id="trackBtn">تتبع</button>
+      </div>
+      <div class="error hidden" id="trackError" role="alert"></div>
+    </form>
+
+    <section class="card hidden" id="result" aria-live="polite">
+      <div class="order-head">
+        <div>
+          <div class="meta">رقم الطلب</div>
+          <div class="order-no" id="rNumber"></div>
+          <div class="meta" id="rProduct"></div>
+        </div>
+        <span class="pill" id="rStage"></span>
+      </div>
+      <div class="progress" aria-hidden="true"><span id="rBar"></span></div>
+      <div class="meta" id="rUpdated"></div>
+      <ol class="timeline" id="rTimeline"></ol>
+      <div class="note hidden" id="rNote"></div>
+    </section>
+
+    <footer class="foot" id="foot"></footer>
+  </main>
+  <script src="/track.js"></script>
+</body>
+</html>

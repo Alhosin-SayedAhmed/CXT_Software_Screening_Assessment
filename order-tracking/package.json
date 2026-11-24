@@ -1,0 +1,19 @@
+{
+  "name": "order-tracking",
+  "version": "1.0.0",
+  "description": "موقع تتبع مراحل تصنيع الطلبات - Order manufacturing tracker",
+  "main": "server.js",
+  "private": true,
+  "scripts": {
+    "start": "node server.js",
+    "dev": "node --watch server.js",
+    "test": "node --test test/*.test.js"
+  },
+  "engines": {
+    "node": ">=20"
+  },
+  "dependencies": {
+    "better-sqlite3": "^11.8.1",
+    "express": "^4.21.2"
+  }
+}
