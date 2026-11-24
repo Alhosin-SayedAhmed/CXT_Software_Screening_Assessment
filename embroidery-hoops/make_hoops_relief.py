@@ -57,7 +57,7 @@ def rounded_extrude(cs, h, r):
         off = r - math.sqrt(max(r * r - zr * zr, 0.0))
         s = cs.offset(-off, JoinType.Round, 2.0, 48).simplify(0.02)
         if s.area() <= 0: break
-        parts.append(Manifold.extrude(s, DZ).translate([0, 0, h - r + i * DZ]))
+        parts.append(Manifold.extrude(s, DZ + 0.02).translate([0, 0, h - r + i * DZ - 0.01]))  # overlap -> fused
     return Manifold.batch_boolean(parts, OpType.Add)
 
 def leaf_pattern(region, seed):
