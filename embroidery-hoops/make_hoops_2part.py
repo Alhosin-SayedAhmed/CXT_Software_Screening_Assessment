@@ -29,7 +29,8 @@ PLATE_T      = 4.0    # total petal thickness (centred on the rim)
 FILLET       = 1.2    # rounding of the visible edges
 BED_CHAMFER  = 0.8    # 45 deg chamfer on edges that touch the bed (instead of a fillet)
 EMBOSS_FRONT = True
-EMBOSS_BACK  = False  # back face is printed on supports -> texture would come out blurry
+EMBOSS_BACK  = "deboss"  # back faces the bed/supports -> the same leaf pattern, engraved instead of raised
+DEBOSS_D     = 0.4      # engraving depth on the back
 EMBOSS_H     = 0.4
 HANG_HOLE_D  = 4.0
 BEAD         = 0.5    # bead height on the ring (radial)
@@ -47,7 +48,7 @@ def edged_extrude(cs, h, r, mode):
         off = zr if mode == "chamfer" else r - math.sqrt(max(r * r - zr * zr, 0.0))
         s = cs.offset(-off, JoinType.Round, 2.0, 48).simplify(0.02)
         if s.area() <= 0: break
-        parts.append(Manifold.extrude(s, DZ + 0.02).translate([0, 0, h - r + i * DZ - 0.01]))  # overlap -> fused
+        parts.append(Manifold.extrude(s, DZ + 0.01).translate([0, 0, h - r + i * DZ - 0.01]))  # overlap -> fused
     return Manifold.batch_boolean(parts, OpType.Add)
 
 def frame(D):
@@ -66,15 +67,20 @@ def frame(D):
     mid, hp, hr = H / 2, PLATE_T / 2, H / 2
 
     def face(emboss, rim_mode, seed):
+        # emboss: True = raised pattern, "deboss" = engraved pattern, False = smooth
         # one half (from the mid-plane outward), z = 0 .. hr
         m = edged_extrude(plate2d, hp, FILLET, "fillet") + edged_extrude(rim2d, hr, FILLET if rim_mode == "fillet" else BED_CHAMFER, rim_mode)
         if emboss:
             pf = flower.buffer(-(FILLET + 0.8)).difference(Point(0, 0).buffer(rim_od / 2 + 0.8, SEG)).difference(hole.buffer(1.2))
-            rf = Point(0, 0).buffer(rim_od / 2 - FILLET - 0.3, SEG).difference(Point(0, 0).buffer(bore / 2 + FILLET + 0.3, SEG))
+            e = max(FILLET, BED_CHAMFER) + 0.3
+            rf = Point(0, 0).buffer(rim_od / 2 - e, SEG).difference(Point(0, 0).buffer(bore / 2 + e, SEG))
             pat = unary_union([leaf_pattern(pf, seed), leaf_pattern(rf, seed + 1)])
             for reg, z in ((pf, hp), (rf, hr)):
                 t = pat.intersection(reg)
-                if not t.is_empty:
+                if t.is_empty: continue
+                if emboss == "deboss":
+                    m = m - Manifold.extrude(to_cs(t), DEBOSS_D + 0.5).translate([0, 0, z - DEBOSS_D])
+                else:
                     m = m + Manifold.extrude(to_cs(t), EMBOSS_H + 0.05).translate([0, 0, z - 0.05])
         return m
 
