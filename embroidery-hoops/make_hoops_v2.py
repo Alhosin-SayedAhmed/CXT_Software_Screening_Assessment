@@ -30,7 +30,8 @@ H           = 9.0      # rim height = ring height
 PLATE_T     = 4.0      # petal thickness
 FILLET      = 1.2
 BED_CHAMFER = 0.8
-TEX_H       = 0.4      # leaf texture height / depth
+TEX_H       = 0.4      # texture height (front) / depth (back)
+TEXTURE     = "motifs" # "motifs" = few large shapes (slicer-friendly), "leaves" = dense leaves, None = smooth
 HANG_HOLE_D = 4.0
 BEAD, GROOVE, RING_CHAMF = 0.5, 0.8, 0.6
 SEG         = 360      # circle resolution
@@ -101,6 +102,51 @@ def leaf_pattern(region, seed):
     pat = pat.buffer(-0.4, 4).buffer(0.4, 4).simplify(0.1)          # drop slivers, keep it light
     return unary_union([g for g in getattr(pat, "geoms", [pat]) if g.area > 1.2])
 
+def mini_flower(cx, cy, size, ang0):
+    """5-petal flower, one connected island."""
+    parts = [Point(cx, cy).buffer(0.22 * size, 12)]
+    for k in range(5):
+        a = ang0 + 2 * math.pi * k / 5
+        pet = scale(Point(0, 0).buffer(1.0, 12), 0.30 * size, 0.15 * size)
+        pet = rotate(pet, math.degrees(a), origin=(0, 0))
+        parts.append(translate(pet, cx + 0.27 * size * math.cos(a), cy + 0.27 * size * math.sin(a)))
+    return unary_union(parts)
+
+def leaf_pair(cx, cy, size, ang):
+    """Two leaves in a V joined at the stem, one island."""
+    leaf = scale(Point(0, 0).buffer(1.0, 12), 0.5 * size, 0.18 * size)
+    out = []
+    for side in (-1, 1):
+        a = ang + side * math.radians(32)
+        l = rotate(leaf, math.degrees(a), origin=(0, 0))
+        out.append(translate(l, cx + 0.42 * size * math.cos(a), cy + 0.42 * size * math.sin(a)))
+    out.append(Point(cx, cy).buffer(0.12 * size, 8))
+    return unary_union(out)
+
+def wave_band(r, amp, waves, width, n=720):
+    """Closed wavy line around the rim, one island."""
+    from shapely.geometry import LinearRing
+    th = np.linspace(0, 2 * math.pi, n, endpoint=False)
+    rr = r + amp * np.sin(waves * th)
+    return LinearRing(np.c_[rr * np.cos(th), rr * np.sin(th)]).buffer(width / 2, 4)
+
+def motif_pattern(Rc, rp, Ri, Ro, plate_face, rim_face):
+    shapes = []
+    for i in range(PETALS):
+        a = 2 * math.pi * i / PETALS + math.pi / 2
+        if i == 0:      # top petal carries the hanging hole
+            continue
+        rr = Rc + 0.30 * rp
+        shapes.append(mini_flower(rr * math.cos(a), rr * math.sin(a), 1.05 * rp, a))
+    for i in range(PETALS):   # leaf pairs in the valleys between petals, pointing outward
+        a = 2 * math.pi * (i + 0.5) / PETALS + math.pi / 2
+        rr = Ro + 1.6
+        shapes.append(leaf_pair(rr * math.cos(a), rr * math.sin(a), 0.75 * rp, a))
+    plate = unary_union(shapes).intersection(plate_face)
+    rim = wave_band((Ri + Ro) / 2, 0.9, 24, 1.0).intersection(rim_face)
+    clean = lambda g: unary_union([x for x in getattr(g, "geoms", [g]) if x.area > 1.0]).simplify(0.03)
+    return clean(plate), clean(rim)
+
 def frame(D, style):
     ring_od = D + 2 * RING_WALL
     bore = ring_od + 2 * FABRIC_GAP
@@ -148,15 +194,17 @@ def frame(D, style):
     e = max(f, BED_CHAMFER) + 0.4
     rim_face = Point(0, 0).buffer(Ro - e, 128).difference(Point(0, 0).buffer(Ri + e, 128))
     def tex(seed):
+        if TEXTURE == "motifs":
+            return motif_pattern(Rc, rp, Ri, Ro, plate_face, rim_face)
         return leaf_pattern(plate_face, seed), leaf_pattern(rim_face, seed + 1)
-    pf, rf = tex(D)
-    raised = [Manifold.extrude(to_cs(pf), TEX_H + 0.05).translate([0, 0, z1 - 0.05]),
-              Manifold.extrude(to_cs(rf), TEX_H + 0.05).translate([0, 0, H - 0.05])]
-    for r_ in raised: body = body + r_
-    if style == "double":                                               # engraved leaves on the back
-        pb, rb = tex(D + 7)
-        body = body - Manifold.extrude(to_cs(pb), TEX_H + 0.5).translate([0, 0, z0 - 0.5])
-        body = body - Manifold.extrude(to_cs(rb), TEX_H + 0.5).translate([0, 0, -0.5])
+    if TEXTURE:
+        pf, rf = tex(D)
+        body = body + Manifold.extrude(to_cs(pf), TEX_H + 0.05).translate([0, 0, z1 - 0.05])
+        body = body + Manifold.extrude(to_cs(rf), TEX_H + 0.05).translate([0, 0, H - 0.05])
+        if style == "double":                                           # same decoration, engraved on the back
+            pb, rb = tex(D + 7)
+            body = body - Manifold.extrude(to_cs(pb), TEX_H + 0.5).translate([0, 0, z0 - 0.5])
+            body = body - Manifold.extrude(to_cs(rb), TEX_H + 0.5).translate([0, 0, -0.5])
 
     # ---- snap groove in the bore ----
     m = H / 2
@@ -175,6 +223,9 @@ def to_tm(m):
     return trimesh.Trimesh(np.asarray(mesh.vert_properties)[:, :3], np.asarray(mesh.tri_verts), process=False)
 
 if __name__ == "__main__":
+    import sys
+    if "--smooth" in sys.argv: TEXTURE = None
+    suffix = "_smooth" if TEXTURE is None else ""
     out = os.path.join(os.path.dirname(os.path.abspath(__file__)), "stl"); os.makedirs(out, exist_ok=True)
     BED, M = 256.0, 3.0
     for style, tag in (("double", "2part"), ("single", "1side")):
@@ -183,13 +234,13 @@ if __name__ == "__main__":
             assert f.status().name == "NoError" and len(f.decompose()) == 1, "frame must be one clean solid"
             tf, tr = to_tm(f), to_tm(ring(D))
             assert tf.is_watertight and tr.is_watertight
-            tf.export(os.path.join(out, f"hoop_{D}mm_{tag}_frame.stl"))
-            tr.export(os.path.join(out, f"hoop_{D}mm_{tag}_ring.stl"))
+            tf.export(os.path.join(out, f"hoop_{D}mm_{tag}{suffix}_frame.stl"))
+            tr.export(os.path.join(out, f"hoop_{D}mm_{tag}{suffix}_ring.stl"))
             o, rr = outer / 2, D / 2 + RING_WALL + BEAD
             fp, rp_ = (o + M, o + M), (BED - rr - M, BED - rr - M)
             assert math.hypot(fp[0] - rp_[0], fp[1] - rp_[1]) > o + rr + 2
             sc = trimesh.Scene()
             sc.add_geometry(tf.copy().apply_translation([fp[0] - BED / 2, fp[1] - BED / 2, 0]), node_name="frame")
             sc.add_geometry(tr.copy().apply_translation([rp_[0] - BED / 2, rp_[1] - BED / 2, 0]), node_name="ring")
-            sc.export(os.path.join(out, f"hoop_{D}mm_{tag}_plate.3mf"))
+            sc.export(os.path.join(out, f"hoop_{D}mm_{tag}{suffix}_plate.3mf"))
             print(f"{style:6s} {D:3d}mm outer {outer:.1f}  faces {len(tf.faces):6d}  z {tf.bounds[0][2]:.2f}..{tf.bounds[1][2]:.2f}")

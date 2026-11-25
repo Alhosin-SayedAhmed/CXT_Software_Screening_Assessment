@@ -5,7 +5,8 @@ STYLES = {
 ==========================================
 قطعتين: إطار حتة واحدة + حلقة بتتقفل جواه بتكة.
 - الحافة الدايرية بارزة من الوش ومن الضهر، والأطراف مدوّرة.
-- الوش: نقشة ورق بارزة 0.4 مم.  الضهر: نفس النقشة محفورة (غايرة) 0.4 مم.
+- الزخرفة: وردة صغيرة على كل بتلة + ورقتين بين كل بتلتين + خط متموّج على الحافة.
+- الوش: الزخرفة بارزة 0.4 مم.  الضهر: نفس الزخرفة محفورة (غايرة) 0.4 مم.
 - ارتفاع الحافة 9 مم — تخانة البتلات 4 مم.
 
 ⚠️ الإطار محتاج دعامات صغيرة (البتلات مرفوعة 2.5 مم فوق البليتة):
@@ -15,7 +16,8 @@ STYLES = {
  "1side": ("طارة_مزخرفة_من_ناحية_واحدة", "إطار_مزخرف_من_ناحية_واحدة", """طارة تطريز وردة — مزخرفة من ناحية واحدة
 ==========================================
 قطعتين: إطار حتة واحدة + حلقة بتتقفل جواه بتكة.
-- الوش: الحافة الدايرية بارزة، الأطراف مدوّرة، ونقشة ورق بارزة 0.4 مم.
+- الوش: الحافة الدايرية بارزة، الأطراف مدوّرة، وزخرفة بارزة 0.4 مم
+  (وردة صغيرة على كل بتلة + ورقتين بين كل بتلتين + خط متموّج على الحافة).
 - الضهر: مستوي تمامًا (مش بارز ومن غير نقشة).
 - ارتفاع الحافة 9 مم — تخانة البتلات 4 مم.
 
@@ -62,7 +64,8 @@ def main():
     with zipfile.ZipFile("طارات_تطريز_وردة_Bambu_A1.zip", "w", zipfile.ZIP_DEFLATED, compresslevel=9) as z:
         for tag, (folder, _, intro) in STYLES.items():
             z.writestr(f"{folder}/اقرأني_طريقة_الطباعة.txt", "﻿" + intro + COMMON)
-            z.write("preview_v2.png", f"{folder}/صورة_المقطع_والوش_والضهر.png")
+            z.write("motif_map_80mm.png", f"{folder}/صورة_الزخرفة.png")
+            z.write("section_compare_80mm.png", f"{folder}/صورة_المقطع.png")
             for D in SIZES:
                 sub = f"{folder}/مقاس_{D}_مم"
                 z.write(f"stl/hoop_{D}mm_{tag}_plate.3mf", f"{sub}/بليتة_جاهزة_للطباعة_{D}مم.3mf")
@@ -77,7 +80,14 @@ def main():
     with zipfile.ZipFile("ملفات_STL_طارات_التطريز.zip", "w", zipfile.ZIP_DEFLATED, compresslevel=9) as z:
         for f in sorted(glob.glob("ملفات_STL/*.stl")):
             z.write(f, f)
-    for zp in ("طارات_تطريز_وردة_Bambu_A1.zip", "ملفات_STL_طارات_التطريز.zip"):
+    # backup: same hoops without decoration (if a slicer still struggles)
+    with zipfile.ZipFile("نسخة_احتياطي_من_غير_زخرفة.zip", "w", zipfile.ZIP_DEFLATED, compresslevel=9) as z:
+        for tag, (_, fname, _) in STYLES.items():
+            for D in SIZES:
+                z.write(f"stl/hoop_{D}mm_{tag}_smooth_frame.stl", f"من_غير_زخرفة/{fname.replace('مزخرف', 'ناعم')}_{D}مم.stl")
+        for D in SIZES:
+            z.write(f"stl/hoop_{D}mm_2part_smooth_ring.stl", f"من_غير_زخرفة/حلقة_{D}مم.stl")
+    for zp in ("طارات_تطريز_وردة_Bambu_A1.zip", "ملفات_STL_طارات_التطريز.zip", "نسخة_احتياطي_من_غير_زخرفة.zip"):
         zz = zipfile.ZipFile(zp); print(zp, len(zz.namelist()), "files", round(os.path.getsize(zp) / 1e6, 1), "MB", "ok" if zz.testzip() is None else "BAD")
 
 if __name__ == "__main__":
