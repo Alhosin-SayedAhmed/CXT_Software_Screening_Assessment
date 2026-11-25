@@ -51,7 +51,9 @@ def edged_extrude(cs, h, r, mode):
         parts.append(Manifold.extrude(s, DZ + 0.01).translate([0, 0, h - r + i * DZ - 0.01]))  # overlap -> fused
     return Manifold.batch_boolean(parts, OpType.Add)
 
-def frame(D):
+def frame(D, style="double"):
+    """style='double': rim raised on both faces (needs small supports).
+       style='single': decorated front, FLAT back on the bed (no supports)."""
     ring_od = D + 2 * RING_WALL
     bore = ring_od + 2 * FABRIC_GAP
     rim_od = bore + 2 * RIM_WIDTH
@@ -66,7 +68,7 @@ def frame(D):
     rim2d = to_cs(Point(0, 0).buffer(rim_od / 2, SEG).difference(bore_c))
     mid, hp, hr = H / 2, PLATE_T / 2, H / 2
 
-    def face(emboss, rim_mode, seed):
+    def face(emboss, rim_mode, seed, hp=hp, hr=hr):
         # emboss: True = raised pattern, "deboss" = engraved pattern, False = smooth
         # one half (from the mid-plane outward), z = 0 .. hr
         m = edged_extrude(plate2d, hp, FILLET, "fillet") + edged_extrude(rim2d, hr, FILLET if rim_mode == "fillet" else BED_CHAMFER, rim_mode)
@@ -84,9 +86,12 @@ def frame(D):
                     m = m + Manifold.extrude(to_cs(t), EMBOSS_H + 0.05).translate([0, 0, z - 0.05])
         return m
 
-    front = face(EMBOSS_FRONT, "fillet", D).translate([0, 0, mid])
-    back = face(EMBOSS_BACK, "chamfer", D + 7).mirror([0, 0, 1]).translate([0, 0, mid])
-    body = front + back
+    if style == "single":
+        body = face(EMBOSS_FRONT, "fillet", D, hp=PLATE_T, hr=H)
+    else:
+        front = face(EMBOSS_FRONT, "fillet", D).translate([0, 0, mid])
+        back = face(EMBOSS_BACK, "chamfer", D + 7).mirror([0, 0, 1]).translate([0, 0, mid])
+        body = front + back
     # V-groove around the bore at mid-height (45 deg walls -> prints without support)
     R = bore / 2
     g = [(R - 0.2, mid - GROOVE - 0.5), (R + GROOVE, mid - 0.3), (R + GROOVE, mid + 0.3), (R - 0.2, mid + GROOVE + 0.5)]
@@ -103,22 +108,21 @@ def ring(D):
 if __name__ == "__main__":
     out = os.path.join(os.path.dirname(os.path.abspath(__file__)), "stl"); os.makedirs(out, exist_ok=True)
     BED, M = 256.0, 3.0
-    for D in SIZES:
-        f, info = frame(D)
-        assert f.status().name == "NoError", f.status()
-        assert len(f.decompose()) == 1, "frame is not one solid"
-        tf, tr = to_tm(f), to_tm(ring(D))
-        assert tf.is_watertight and tr.is_watertight
-        tf.export(os.path.join(out, f"hoop_{D}mm_2part_frame.stl"))
-        tr.export(os.path.join(out, f"hoop_{D}mm_2part_ring.stl"))
-        o, rr = info["outer"] / 2, D / 2 + RING_WALL + BEAD
-        fp, rp_ = (o + M, o + M), (BED - rr - M, BED - rr - M)
-        assert math.hypot(fp[0] - rp_[0], fp[1] - rp_[1]) > o + rr + 2, "ring overlaps frame"
-        sc = trimesh.Scene()
-        sc.add_geometry(tf.copy().apply_translation([fp[0] - BED / 2, fp[1] - BED / 2, 0]), node_name="frame")
-        sc.add_geometry(tr.copy().apply_translation([rp_[0] - BED / 2, rp_[1] - BED / 2, 0]), node_name="ring")
-        sc.export(os.path.join(out, f"hoop_{D}mm_2part_plate.3mf"))
-        bead_r = D / 2 + RING_WALL + BEAD
-        print(f"{D}mm: outer {2*o:.1f}, bore {info['bore']:.2f}, ring OD {D+2*RING_WALL:.1f} (bead {2*bead_r:.1f}), "
-              f"snap with 0.3mm fabric: {(bead_r + 0.3 - info['bore']/2):.2f} mm interference, "
-              f"frame {tf.volume/1000:.1f} cm3, faces {len(tf.faces)}")
+    for style, tag in (("double", "2part"), ("single", "1side")):
+        for D in SIZES:
+            f, info = frame(D, style)
+            assert f.status().name == "NoError", f.status()
+            assert len(f.decompose()) == 1, "frame is not one solid"
+            tf, tr = to_tm(f), to_tm(ring(D))
+            assert tf.is_watertight and tr.is_watertight
+            tf.export(os.path.join(out, f"hoop_{D}mm_{tag}_frame.stl"))
+            tr.export(os.path.join(out, f"hoop_{D}mm_{tag}_ring.stl"))
+            o, rr = info["outer"] / 2, D / 2 + RING_WALL + BEAD
+            fp, rp_ = (o + M, o + M), (BED - rr - M, BED - rr - M)
+            assert math.hypot(fp[0] - rp_[0], fp[1] - rp_[1]) > o + rr + 2, "ring overlaps frame"
+            sc = trimesh.Scene()
+            sc.add_geometry(tf.copy().apply_translation([fp[0] - BED / 2, fp[1] - BED / 2, 0]), node_name="frame")
+            sc.add_geometry(tr.copy().apply_translation([rp_[0] - BED / 2, rp_[1] - BED / 2, 0]), node_name="ring")
+            sc.export(os.path.join(out, f"hoop_{D}mm_{tag}_plate.3mf"))
+            print(f"{style:6s} {D}mm: outer {2*o:.1f}, bounds z {tf.bounds[0][2]:.2f}..{tf.bounds[1][2]:.2f}, "
+                  f"frame {tf.volume/1000:.1f} cm3")
