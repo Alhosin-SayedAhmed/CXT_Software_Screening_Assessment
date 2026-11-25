@@ -76,9 +76,14 @@ KNOB_CLEAR     = 0.15    # mm gap per side in the jigsaw joint
 # the hanger lies level with the heart (original look). Its jigsaw knobs are slightly
 # tapered: a hair smaller than the socket at the front, a hair bigger at the back. Pushed in
 # from behind, each knob wedges tight in its socket and cannot pass through to the front.
-KNOB_FRONT_GAP = 0.05    # mm per side the knob is smaller than the socket at the front face
-KNOB_BACK_GRIP = 0.15    # mm per side the knob is bigger than the socket at the back face
-KNOB_STEPS     = 14      # taper steps through the thickness (one per 0.2 mm layer)
+# snap lock: a V groove runs round the inside of each socket at mid-thickness; the hanger's
+# knob is split down the middle and has V bumps on its sides that click into the groove.
+SNAP_GROOVE    = 0.40    # mm groove depth into the socket wall
+SNAP_BUMP      = 0.32    # mm bump height on the knob sides
+SNAP_HALF      = 0.60    # mm half-height of the V (45 degree flanks, prints without support)
+SNAP_KNOB_GAP  = 0.07    # mm per side between knob and socket outside the groove
+SNAP_SLIT      = 1.0     # mm slit down the knob so its halves flex
+SNAP_STEPS     = 12      # slices used to build the V shapes
 PLATE          = 250.0   # mm usable square on the A1 plate
 PLATE_GAP      = 3.0     # mm between pieces on a plate
 
@@ -398,6 +403,16 @@ def main():
     # opening removes zero-width wall pinches where two pocket corners meet
     cut = extrude(unary_union(list(pockets.values())).buffer(-0.15, join_style=1).buffer(0.12, join_style=1), BASE_H, WALL_H + 1)
     board = board - cut - extrude(unary_union(sockets), -1, TOP + 2)
+    # V groove inside each socket (hidden; the heart's size and outline are unchanged)
+    zc = TOP / 2
+    for i in range(SNAP_STEPS):
+        z_a = zc - SNAP_HALF + 2 * SNAP_HALF * i / SNAP_STEPS
+        z_m = z_a + SNAP_HALF / SNAP_STEPS
+        g = SNAP_GROOVE * max(0.0, 1 - abs(z_m - zc) / SNAP_HALF)
+        if g > 0.01:
+            ring = unary_union([sk.buffer(g, join_style=1) for sk in sockets]).intersection(
+                shapely.geometry.box(-1e3, -1e3, 1e3, y_join + 2))
+            board = board - extrude(ring, z_a, 2 * SNAP_HALF / SNAP_STEPS + 0.001)
     if LOCK_STYLE == 'peg':
         floor_txt = unary_union([v[0] for v in locks.values() if v[0] is not None])
         board = board + extrude(floor_txt, BASE_H - 0.01, PEG_FLOOR_NAME_H + 0.01)
@@ -435,12 +450,22 @@ def main():
     text_area = band.buffer(-3.5)
     btxt, bem = fit_text(HANGER_TEXT, text_area, font=HANGER_FONT, angles=(0,), max_em=40)
     hanger = extrude(banner, 0, TOP)
+    zc = TOP / 2
     for x in lug_x:
-        for i in range(KNOB_STEPS):                      # back (z=0) slightly big -> front slightly small
-            t = (i + 0.5) / KNOB_STEPS
-            d = KNOB_BACK_GRIP + (-KNOB_FRONT_GAP - KNOB_BACK_GRIP) * t
-            z_a = TOP * i / KNOB_STEPS
-            hanger = hanger + extrude(socket_shape(x, d), z_a - (0.01 if i else 0), TOP / KNOB_STEPS + (0.01 if i else 0))
+        base = socket_shape(x, -SNAP_KNOB_GAP)
+        knob = extrude(base, 0, TOP)
+        sides = shapely.geometry.box(-1e3, -1e3, 1e3, y_join - 0.5).difference(
+            shapely.geometry.box(x - 1.8, -1e3, x + 1.8, 1e3))          # bumps only where the halves can flex
+        for i in range(SNAP_STEPS):
+            z_a = zc - SNAP_HALF + 2 * SNAP_HALF * i / SNAP_STEPS
+            z_m = z_a + SNAP_HALF / SNAP_STEPS
+            b = SNAP_BUMP * max(0.0, 1 - abs(z_m - zc) / SNAP_HALF)
+            if b > 0.01:
+                bump = base.buffer(b, join_style=1).difference(base.buffer(-0.3, join_style=1)).intersection(sides)   # overlaps into the knob so it fuses
+                knob = knob + extrude(bump, z_a - 0.001, 2 * SNAP_HALF / SNAP_STEPS + 0.002)
+        slit = shapely.geometry.box(x - SNAP_SLIT / 2, head_y - KNOB_R - 2, x + SNAP_SLIT / 2, y_join - 1.2)
+        knob = knob - extrude(slit, -1, TOP + 2)
+        hanger = hanger + knob
     if btxt is not None:
         hanger = hanger + extrude(btxt, TOP - 0.01, TEXT_H + 0.01)
     to_trimesh(hanger).export(os.path.join(out, 'hanger_assembled.stl'))
