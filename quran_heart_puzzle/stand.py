@@ -33,12 +33,12 @@ LIFT        = 6.0     # mm heart's bottom tip above the base
 REST_W      = 34.0    # mm hidden back rest width
 REST_H      = 72.0    # mm hidden back rest height above the heart's bottom
 # crescent on the right side: outer circle minus an inner circle shifted toward the heart
-MOON_X      = 45.0    # mm outer circle centre, right of the heart's bottom tip
-MOON_Y      = 55.0    # mm outer circle centre height above the heart's bottom tip
-MOON_R      = 62.0    # mm outer radius
+MOON_X      = 38.0    # mm outer circle centre, right of the heart's bottom tip
+MOON_Y      = 52.0    # mm outer circle centre height above the heart's bottom tip
+MOON_R      = 78.0    # mm outer radius
 MOON_SPAN   = 150.0   # deg from horn tip to horn tip
-MOON_THICK  = 20.0    # mm crescent thickness at its middle
-MOON_DIR    = 0.0     # deg direction of the crescent's thick middle (0 = straight right)
+MOON_THICK  = 30.0    # mm crescent thickness at its middle
+MOON_DIR    = -40.0     # deg direction of the crescent's thick middle (0 = straight right)
 BASE_T      = 4.0     # mm base plate thickness
 BASE_CX     = 30.0    # mm base centre x
 BASE_RX     = 86.0    # mm base half-width (oval)
@@ -68,29 +68,25 @@ def main():
     n_front = BOARD_T + SLOT_CLEAR + FRONT_T
     below = -LIFT - 5                                         # local y well under the base top
 
-    # cradle around the heart's bottom, with a pedestal down into the base
+    # crescent behind the heart's lower-right corner; it carries the heart's bottom tip and
+    # grips its edge wherever they overlap (groove), front lip only over the outer rim
+    moon = crescent(hx + MOON_X, MOON_Y, MOON_R, MOON_SPAN, MOON_THICK, MOON_DIR)
+    lowest = moon.bounds[1]
+    rest = box(hx - REST_W / 2, 0, hx + REST_W / 2, REST_H).buffer(-8, join_style=1).buffer(8, join_style=1)
+    rest = rest.intersection(outline.buffer(-6, join_style=1))   # hidden behind the heart
+    # pedestal under the heart's tip so it never rests on a thin horn
     cup = outline.buffer(EDGE_CLEAR + CUP_WALL, join_style=1).intersection(box(-1e3, -1e3, 1e3, CUP_H))
     cb = cup.bounds
-    cradle = unary_union([cup, box(cb[0], below, cb[2], 0)]).convex_hull.intersection(box(-1e3, below, 1e3, CUP_H))
-    # crescent; its lower horn is extended straight down into the base
-    moon = crescent(hx + MOON_X, MOON_Y, MOON_R, MOON_SPAN, MOON_THICK, MOON_DIR)
-    low = moon.intersection(box(-1e3, -1e3, 1e3, 4))
-    if not low.is_empty:
-        lb = low.bounds
-        moon = unary_union([moon, box(lb[0], below, lb[2], lb[1] + 1).intersection(
-            unary_union([low, box(lb[0], below, lb[2], below + 0.1)]).convex_hull)])
-    pad = outline.buffer(EDGE_CLEAR + 0.5, join_style=1)
-    behind = moon.intersection(pad)                           # only behind the heart where they overlap
-    beside = moon.difference(pad)
-    rest = box(hx - REST_W / 2, 0, hx + REST_W / 2, REST_H).buffer(-8, join_style=1).buffer(8, join_style=1)
-    rest = rest.intersection(outline.buffer(-6, join_style=1))   # stays hidden behind the heart
+    low_moon = moon.intersection(box(-1e3, -1e3, 1e3, CUP_H))
+    cradle = unary_union([cup, low_moon]).convex_hull.intersection(box(-1e3, lowest, 1e3, CUP_H))
+    cradle = cradle.buffer(-4, join_style=1).buffer(4, join_style=1)
 
-    local = extrude(unary_union([cradle, beside]), n_back, n_front - n_back)
-    local = local + extrude(unary_union([behind, rest, box(hx - REST_W / 2, 2, hx + REST_W / 2, 20)]), n_back, BACK_T)
+    local = extrude(unary_union([moon, cradle]), n_back, n_front - n_back)
+    local = local + extrude(rest, n_back, BACK_T)
     local = local - extrude(outline.buffer(EDGE_CLEAR, join_style=1), -SLOT_CLEAR, BOARD_T + 2 * SLOT_CLEAR)
     local = local - extrude(outline.buffer(-RIM_COVER, join_style=1), BOARD_T + SLOT_CLEAR - 0.01, 50)
 
-    lift = BASE_T + LIFT
+    lift = BASE_T - lowest * math.cos(a) - 0.5
     M = [[1, 0, 0, 0],
          [0, math.sin(a), -math.cos(a), 0],
          [0, math.cos(a), math.sin(a), lift]]
@@ -102,7 +98,7 @@ def main():
     def w(y, n):                                            # local (y, n) -> world (Y, Z)
         return (y * math.sin(a) - n * math.cos(a), y * math.cos(a) + n * math.sin(a) + lift)
     p_top = w(REST_H - 12, n_back + 0.5)
-    p_low = w(0, n_back + 0.5)
+    p_low = w(max(lowest, -10), n_back + 0.5)
     back_y = BASE_SHIFT + BASE_RY - 10
     tri = Polygon([p_top, (p_low[0], BASE_T - 0.01), (back_y, BASE_T - 0.01)])
     brace = extrude(tri, hx - BRACE_T / 2, BRACE_T).transform([[0, 0, 1, 0], [1, 0, 0, 0], [0, 1, 0, 0]])
