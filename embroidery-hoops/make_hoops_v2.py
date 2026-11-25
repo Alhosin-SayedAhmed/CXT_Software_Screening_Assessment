@@ -26,7 +26,10 @@ import trimesh
 SIZES       = [60, 80, 100]
 PETALS      = 12
 RING_WALL   = 3.5
-FABRIC_GAP  = 0.35     # radial room for the fabric at the seated position
+FIT         = "snap"   # "snap": straight bore + bead/groove, ring flush both faces (the fit that works with fabric)
+                       # "taper": tapered ring that seats on a lip on the bed side
+FABRIC_GAP  = 0.55 if FIT == "snap" else 0.35   # radial room for the fabric
+BEAD, GROOVE = 0.5, 0.8   # snap fit: bead around the middle of the ring, groove in the frame bore
 TAPER       = 0.6      # ring + bore narrow by this (radial) toward the back -> pushing harder clamps tighter
 LIP_W       = 1.5      # back lip (on the bed): ring cannot pass out of the back (45 deg seat)
 LIP_T       = 1.2      # lip thickness above the seat
@@ -158,10 +161,13 @@ def motif_pattern(Rc, rp, Ri, Ro, plate_face, rim_face):
     return clean(plate), clean(rim)
 
 def frame(D, style):
-    ro_b = D / 2 + RING_WALL                 # ring outer radius at its back (wide) end
-    Rb = ro_b + FABRIC_GAP                   # bore radius at the back (entry)
-    Rf = ro_b - TAPER + FABRIC_GAP           # bore radius at the lip seat
-    Ri = Rf - LIP_W                          # lip inner radius (lip sits on the bed side)
+    ro_b = D / 2 + RING_WALL                 # ring outer radius (taper: at its wide end)
+    Rb = ro_b + FABRIC_GAP                   # bore radius (taper: at the entry)
+    if FIT == "snap":
+        Ri = Rb                              # straight bore
+    else:
+        Rf = ro_b - TAPER + FABRIC_GAP       # bore radius at the lip seat
+        Ri = Rf - LIP_W                      # lip inner radius (lip sits on the bed side)
     Ro = Rb + RIM_WIDTH
     Rc = Ro + 5.0
     rp = 2 * Rc * math.sin(math.pi / PETALS) * 0.55
@@ -201,13 +207,20 @@ def frame(D, style):
     body = plate + rim
     body = body - Manifold.cylinder(H + 2, Ri, Ri, SEG).translate([0, 0, -1])
     body = body - Manifold.cylinder(H + 2, HANG_HOLE_D / 2, HANG_HOLE_D / 2, 32).translate([0, Rc, -1])
-    # ---- tapered bore + front lip seat (ring enters from the back only) ----
     c = RING_CHAMF
-    Rb_c = Rb - TAPER * c / Z_SEAT
-    space = [(Ri - 1, -1), (Rb_c + c, -1), (Rb_c + c, 0.0), (Rb_c, c), (Rf, Z_SEAT), (Ri, Z_SEAT + LIP_W), (Ri, H + 1), (Ri - 1, H + 1)]
-    # ring enters from the FRONT (top) and seats on a lip at the BACK (bed side): mirror the bore in z
-    space = [(r, H - z) for r, z in space][::-1]
-    body = body - Manifold.revolve(CrossSection([space]), SEG)
+    if FIT == "snap":
+        # ---- straight bore, entry chamfer on the bed side, snap groove at mid-height ----
+        if style == "bedside":
+            body = body - Manifold.cylinder(c + 0.01, Ri + c, Ri - 0.01, SEG).translate([0, 0, -0.01])
+        m = H / 2
+        g = [(Ri - 0.2, m - GROOVE - 0.5), (Ri + GROOVE, m - 0.3), (Ri + GROOVE, m + 0.3), (Ri - 0.2, m + GROOVE + 0.5)]
+        body = body - Manifold.revolve(CrossSection([g]), SEG)
+    else:
+        # ---- tapered bore + lip seat on the bed side (ring enters from the front only) ----
+        Rb_c = Rb - TAPER * c / Z_SEAT
+        space = [(Ri - 1, -1), (Rb_c + c, -1), (Rb_c + c, 0.0), (Rb_c, c), (Rf, Z_SEAT), (Ri, Z_SEAT + LIP_W), (Ri, H + 1), (Ri - 1, H + 1)]
+        space = [(r, H - z) for r, z in space][::-1]
+        body = body - Manifold.revolve(CrossSection([space]), SEG)
 
     # ---- leaf texture on the flat faces ----
     from shapely.geometry import Polygon  # noqa: E402
@@ -222,7 +235,7 @@ def frame(D, style):
             return motif_pattern(Rc, rp, r_in, Ro, plate_face, rim_face)
         return leaf_pattern(plate_face, seed), leaf_pattern(rim_face, seed + 1)
     if TEXTURE:
-        pf, rf = tex(D, r_in=Rb + RING_CHAMF)          # front rim face starts at the wide bore entry
+        pf, rf = tex(D, r_in=Ri if FIT == "snap" else Rb + RING_CHAMF)   # front rim face inner edge
         body = body + Manifold.extrude(to_cs(pf), TEX_H + 0.05).translate([0, 0, z1 - 0.05])
         body = body + Manifold.extrude(to_cs(rf), TEX_H + 0.05).translate([0, 0, H - 0.05])
         if style == "bedside":
@@ -259,8 +272,13 @@ def ring(D):
     # tapered ring (printed wide end down): narrow 45 deg end goes in first from the front and seats on the back lip;
     # the wide end ends flush with the front of the frame
     ri, ro, c = D / 2, D / 2 + RING_WALL, RING_CHAMF
-    prof = [(ri, 0), (ro - c, 0), (ro - TAPER * c / Z_SEAT, c), (ro - TAPER, Z_SEAT),
-            (ro - TAPER - LIP_W, RING_H), (ri, RING_H)]
+    if FIT == "snap":   # symmetric ring, height H, 45 deg bead around the middle -> clicks into the frame groove
+        m, b = H / 2, BEAD
+        prof = [(ri, 0), (ro - c, 0), (ro, c), (ro, m - 2 * b), (ro + b, m - b), (ro + b, m + b), (ro, m + 2 * b),
+                (ro, H - c), (ro - c, H), (ri, H)]
+    else:
+        prof = [(ri, 0), (ro - c, 0), (ro - TAPER * c / Z_SEAT, c), (ro - TAPER, Z_SEAT),
+                (ro - TAPER - LIP_W, RING_H), (ri, RING_H)]
     return Manifold.revolve(CrossSection([prof]), SEG)
 
 def to_tm(m):
@@ -281,7 +299,7 @@ if __name__ == "__main__":
             assert tf.is_watertight and tr.is_watertight
             tf.export(os.path.join(out, f"hoop_{D}mm_{tag}{suffix}_frame.stl"))
             tr.export(os.path.join(out, f"hoop_{D}mm_{tag}{suffix}_ring.stl"))
-            o, rr = outer / 2, D / 2 + RING_WALL + 0.5
+            o, rr = outer / 2, D / 2 + RING_WALL + BEAD
             fp, rp_ = (o + M, o + M), (BED - rr - M, BED - rr - M)
             assert math.hypot(fp[0] - rp_[0], fp[1] - rp_[1]) > o + rr + 2
             sc = trimesh.Scene()
