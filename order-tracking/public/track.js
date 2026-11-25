@@ -151,10 +151,8 @@
   async function refresh() {
     if (!shown || document.hidden) return;
     try {
-      const res = await fetch('/api/track/' + encodeURIComponent(shown.number));
-      if (!res.ok) return;
-      const data = await res.json();
-      if (shown && data.order_number === shown.number && data.updated_at !== shown.updated_at) {
+      const data = await fetchOrder(shown.number);
+      if (data && shown && data.order_number === shown.number && data.updated_at !== shown.updated_at) {
         render(data, { scroll: false });
       }
     } catch { /* مفيش نت دلوقتي — هنجرب المرة الجاية */ }
@@ -162,19 +160,26 @@
   setInterval(refresh, REFRESH_MS);
   document.addEventListener('visibilitychange', refresh);
 
+  // بيسأل Supabase عن الطلب. بيرجع null لو الرقم مش موجود
+  async function fetchOrder(number) {
+    const { data, error } = await APP.db.rpc('track_order', { p_order_number: number });
+    if (error) throw error;
+    return data;
+  }
+
   async function track(number) {
     number = String(number || '').trim().replace(/^#/, '');
     if (!number) return showError('اكتب رقم الطلب الأول');
+    if (!APP.configured) return showError(APP.notConfiguredMessage);
     btn.disabled = true;
     try {
-      const res = await fetch('/api/track/' + encodeURIComponent(number));
-      const data = await res.json().catch(() => ({}));
-      if (!res.ok) return showError(data.error || 'حصلت مشكلة، جرب تاني');
+      const data = await fetchOrder(number);
+      if (!data) return showError('رقم الطلب ده مش موجود. اتأكد من الرقم وجرب تاني.');
       render(data);
       const url = '/track/' + encodeURIComponent(data.order_number);
       if (location.pathname !== url) history.replaceState(null, '', url);
     } catch {
-      showError('مفيش اتصال بالإنترنت، جرب تاني');
+      showError('حصلت مشكلة في الاتصال، جرب تاني');
     } finally {
       btn.disabled = false;
     }
@@ -182,22 +187,30 @@
 
   form.addEventListener('submit', (e) => { e.preventDefault(); track(input.value); });
 
-  fetch('/api/config').then((r) => r.json()).then((cfg) => {
-    STAGES = cfg.stages || [];
-    if (cfg.storeName) {
-      $('storeLink').textContent = cfg.storeName;
-      document.title = 'تتبع طلبك — ' + cfg.storeName;
+  async function init() {
+    const cfg = APP.cfg;
+    if (cfg.STORE_NAME) {
+      $('storeLink').textContent = cfg.STORE_NAME;
+      document.title = 'تتبع طلبك — ' + cfg.STORE_NAME;
     }
-    if (cfg.storeUrl) {
-      $('storeLink').href = cfg.storeUrl;
+    if (cfg.STORE_URL) {
+      $('storeLink').href = cfg.STORE_URL;
       const a = document.createElement('a');
-      a.href = cfg.storeUrl;
+      a.href = cfg.STORE_URL;
       a.textContent = 'ارجع للمتجر';
       $('foot').append(a);
     }
+    if (!APP.configured) return showError(APP.notConfiguredMessage);
+
+    // المراحل متخزنة في Supabase (جدول stages)
+    const { data, error } = await APP.db.from('stages').select('key, label, description, icon').order('position');
+    if (error) return showError('حصلت مشكلة في الاتصال، جرب تاني');
+    STAGES = data || [];
+
     // يدعم اللينكات: /track/123  أو  /?order=123
     const m = location.pathname.match(/^\/track\/([^/]+)/);
     const fromUrl = m ? decodeURIComponent(m[1]) : new URLSearchParams(location.search).get('order');
     if (fromUrl) { input.value = fromUrl; track(fromUrl); }
-  });
+  }
+  init();
 })();

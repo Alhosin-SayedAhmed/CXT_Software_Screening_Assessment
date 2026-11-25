@@ -14,10 +14,12 @@
   <!-- تسجيل الدخول -->
   <main class="wrap hidden" id="loginView">
     <h1>لوحة التحكم</h1>
-    <p class="sub">ادخل باسورد الأدمن.</p>
+    <p class="sub">ادخل بحساب الأدمن اللي عملته في Supabase.</p>
     <form class="card" id="loginForm">
-      <label for="password">الباسورد</label>
-      <input id="password" type="password" autocomplete="current-password" required>
+      <label for="email">الإيميل</label>
+      <input id="email" type="email" autocomplete="username" dir="ltr" required>
+      <label for="password" class="mt">الباسورد</label>
+      <input id="password" type="password" autocomplete="current-password" dir="ltr" required>
       <button type="submit" id="loginBtn" class="login-btn">دخول</button>
       <div class="error hidden" id="loginError" role="alert"></div>
     </form>
@@ -122,6 +124,9 @@
   </dialog>
 
   <div class="toast hidden" id="toast" role="status"></div>
+  <script src="/vendor/supabase.js"></script>
+  <script src="/config.js"></script>
+  <script src="/common.js"></script>
   <script src="/admin.js"></script>
 </body>
 </html>

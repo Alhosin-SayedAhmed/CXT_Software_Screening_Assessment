@@ -9,17 +9,83 @@
     new Date(iso).toLocaleString('ar-EG', { dateStyle: 'short', timeStyle: 'short' });
   const stageLabel = (key) => (STAGES.find((s) => s.key === key) || {}).label || key;
 
-  async function api(path, opts = {}) {
-    const res = await fetch(path, {
-      ...opts,
-      headers: { 'Content-Type': 'application/json', ...(opts.headers || {}) },
-      body: opts.body ? JSON.stringify(opts.body) : undefined,
-    });
-    const data = await res.json().catch(() => ({}));
-    if (res.status === 401 && !path.endsWith('/login')) { showLogin(); throw new Error(data.error); }
-    if (!res.ok) throw new Error(data.error || 'حصلت مشكلة');
-    return data;
+  // ---------- الكلام مع Supabase ----------
+  const db = APP.db;
+  const normNumber = (v) => String(v || '').trim().replace(/^#/, '').slice(0, 50);
+  const clean = (v, max) => (v === undefined ? undefined : String(v).trim().slice(0, max));
+
+  // بيحوّل أخطاء Supabase لرسالة مفهومة
+  function fail(error) {
+    if (!error) return;
+    const code = error.code || '';
+    if (code === '23505') throw new Error('رقم الطلب ده متسجل قبل كده');
+    if (code === '42501' || code === 'PGRST301' || code === 'PGRST303' || /JWT/i.test(error.message || '')) {
+      showLogin();
+      throw new Error('انتهت الجلسة أو الحساب مش أدمن. سجّل الدخول تاني.');
+    }
+    if (code === '23503') throw new Error('مرحلة غير صحيحة');
+    if (code === '23514') throw new Error('في خانة مكتوب فيها كلام أطول من المسموح');
+    throw new Error('حصلت مشكلة، جرب تاني');
   }
+
+  function orderFields(b) {
+    const out = {
+      customer_name: clean(b.customer_name, 100),
+      phone: clean(b.phone, 30),
+      product: clean(b.product, 200),
+      note: clean(b.note, 500),
+      stage: b.stage || undefined,
+    };
+    Object.keys(out).forEach((k) => out[k] === undefined && delete out[k]);
+    return out;
+  }
+
+  const store = {
+    async login(email, password) {
+      const { error } = await db.auth.signInWithPassword({ email: email.trim(), password });
+      if (error) throw new Error('الإيميل أو الباسورد غلط');
+      if (!(await store.isAdmin())) {
+        await db.auth.signOut();
+        throw new Error('الحساب ده مش متسجّل كأدمن. ضيفه في جدول admins (شوف README).');
+      }
+    },
+    async logout() { await db.auth.signOut(); },
+    async isAdmin() {
+      const { data: { session } } = await db.auth.getSession();
+      if (!session) return false;
+      const { data, error } = await db.rpc('is_admin');
+      return !error && data === true;
+    },
+    async list(search, stage) {
+      const [list, counts] = await Promise.all([
+        db.rpc('admin_list_orders', { p_search: search, p_stage: stage }),
+        db.rpc('admin_order_counts'),
+      ]);
+      fail(list.error); fail(counts.error);
+      return {
+        orders: list.data || [],
+        counts: Object.fromEntries((counts.data || []).map((r) => [r.stage, r.n])),
+      };
+    },
+    async create(b) {
+      const order_number = normNumber(b.order_number);
+      if (!order_number) throw new Error('لازم تكتب رقم الطلب');
+      const { data, error } = await db.from('orders').insert({ order_number, ...orderFields(b) }).select().single();
+      fail(error);
+      return data;
+    },
+    async update(id, b) {
+      const { data, error } = await db.from('orders').update(orderFields(b)).eq('id', id).select();
+      fail(error);
+      if (!data || !data.length) throw new Error('الطلب مش موجود');
+      return data[0];
+    },
+    async remove(id) {
+      const { data, error } = await db.from('orders').delete().eq('id', id).select('id');
+      fail(error);
+      if (!data || !data.length) throw new Error('الطلب مش موجود');
+    },
+  };
 
   let toastTimer;
   function toast(msg) {
@@ -50,7 +116,7 @@
   function showLogin() {
     $('dashView').classList.add('hidden');
     $('loginView').classList.remove('hidden');
-    $('password').focus();
+    $('email').focus();
   }
 
   function showDash() {
@@ -64,7 +130,7 @@
     e.preventDefault();
     $('loginBtn').disabled = true;
     try {
-      await api('/api/admin/login', { method: 'POST', body: { password: $('password').value } });
+      await store.login($('email').value, $('password').value);
       $('password').value = '';
       setError($('loginError'));
       showDash();
@@ -76,7 +142,7 @@
   });
 
   $('logoutBtn').addEventListener('click', async () => {
-    await api('/api/admin/logout', { method: 'POST' }).catch(() => {});
+    await store.logout().catch(() => {});
     showLogin();
   });
 
@@ -86,7 +152,7 @@
     const body = Object.fromEntries(new FormData(e.target));
     $('addBtn').disabled = true;
     try {
-      const o = await api('/api/admin/orders', { method: 'POST', body });
+      const o = await store.create(body);
       e.target.reset();
       setError($('addError'));
       toast('اتضاف الطلب #' + o.order_number);
@@ -107,9 +173,8 @@
   });
 
   async function load() {
-    const params = new URLSearchParams({ search: $('search').value.trim(), stage: filterStage });
     let data;
-    try { data = await api('/api/admin/orders?' + params); } catch { return; }
+    try { data = await store.list($('search').value.trim().slice(0, 100), filterStage); } catch (err) { toast(err.message); return; }
     renderChips(data.counts || {});
     renderRows(data.orders || []);
   }
@@ -165,7 +230,7 @@
       sel.addEventListener('change', async () => {
         sel.disabled = true;
         try {
-          await api('/api/admin/orders/' + o.id, { method: 'PATCH', body: { stage: sel.value } });
+          await store.update(o.id, { stage: sel.value });
           toast('#' + o.order_number + ' ← ' + stageLabel(sel.value));
           load();
         } catch (err) {
@@ -194,7 +259,7 @@
         btn('تعديل', 'btn-ghost', () => openEdit(o.id)),
         btn('حذف', 'btn-danger', async () => {
           if (!confirm('متأكد إنك عاوز تحذف الطلب #' + o.order_number + '؟')) return;
-          try { await api('/api/admin/orders/' + o.id, { method: 'DELETE' }); toast('اتحذف'); load(); }
+          try { await store.remove(o.id); toast('اتحذف'); load(); }
           catch (err) { toast(err.message); }
         }),
       );
@@ -231,7 +296,7 @@
     const body = Object.fromEntries(new FormData(e.target));
     $('saveBtn').disabled = true;
     try {
-      await api('/api/admin/orders/' + editingId, { method: 'PATCH', body });
+      await store.update(editingId, body);
       dlg.close();
       toast('اتحفظ');
       load();
@@ -251,10 +316,19 @@
   }, 30000);
 
   // ---------- البداية ----------
-  Promise.all([fetch('/api/config').then((r) => r.json()), api('/api/admin/me')]).then(([cfg, me]) => {
-    STAGES = cfg.stages || [];
+  async function init() {
+    if (!APP.configured) {
+      showLogin();
+      setError($('loginError'), APP.notConfiguredMessage);
+      $('loginBtn').disabled = true;
+      return;
+    }
+    const { data, error } = await db.from('stages').select('key, label').order('position');
+    if (error) { showLogin(); setError($('loginError'), 'مش قادر يتصل بـ Supabase. اتأكد من config.js'); return; }
+    STAGES = data || [];
     const sel = $('fStage');
     STAGES.forEach((s) => sel.append(new Option(s.label, s.key)));
-    if (me.admin) showDash(); else showLogin();
-  });
+    if (await store.isAdmin()) showDash(); else showLogin();
+  }
+  init();
 })();
