@@ -43,7 +43,7 @@ NAME_CLEAR     = 0.12    # mm, gap per side between raised name and hollow
 RECESS_DEPTH   = 1.2     # mm, hollow depth under the piece (> FLOOR_TEXT_H)
 # LOCK_STYLE 'peg': the pocket floor name is only a low guide, a round post (placed clear
 # of the name) locates the piece, and crush ribs on the pocket walls hold it by pressure.
-LOCK_STYLE     = os.environ.get('LOCK_STYLE', 'name')   # 'name' or 'peg'
+LOCK_STYLE     = os.environ.get('LOCK_STYLE', 'peg')    # 'peg' (current) or 'name' (older version)
 PEG_FLOOR_NAME_H = 0.2   # mm, floor name height (one layer)
 PEG_FLOOR_NAME_SCALE = 0.8  # floor name drawn a bit smaller than the piece name, leaving room for the post
 PEG_DIAMETERS  = (3.0, 2.5, 2.0)  # mm, largest post that fits clear of the name is used
@@ -51,8 +51,8 @@ PEG_H          = 0.6     # mm, post height above the floor (three layers)
 PEG_NAME_GAP   = 1.0     # mm, minimum gap between the post and the name
 PEG_HOLE_EXTRA = 0.4     # mm, hole diameter under the piece = post diameter + this
 PEG_HOLE_DEPTH = 0.8     # mm, hole depth (four layers)
-NAME_RECESS_GROW  = 0.5  # mm, recess under the piece is the floor name grown by this
-NAME_RECESS_DEPTH = 0.4  # mm, recess depth (two layers)
+NAME_RECESS_MARGIN = 0.8 # mm, plain rectangular recess under the piece = the floor name's box + this
+NAME_RECESS_DEPTH = 0.4  # mm, recess depth (two layers); the name never touches it
 RIB_R          = 0.35    # mm, crush rib radius (sticks into the 0.2 mm gap -> 0.15 mm squeeze)
 RIB_SPACING    = 14.0    # mm along the pocket wall between ribs
 RIB_MIN        = 3       # at least this many ribs per pocket
@@ -366,29 +366,30 @@ def main():
     if LOCK_STYLE == 'peg':
         for key, pk in pockets.items():
             body, txt, em = names[key]
-            ftxt, peg = None, None
-            # small pockets: shrink the floor name further until a post fits clear of it
-            for sc in (PEG_FLOOR_NAME_SCALE, 0.65, 0.5):
-                ft = None
+            ftxt, peg, rect = None, None, None
+            # small pockets: shrink the floor name further until a post fits clear of its box
+            for sc in (PEG_FLOOR_NAME_SCALE, 0.65, 0.5, 0.4, 0.3):
+                ft, rc = None, None
                 if txt is not None and not txt.is_empty:
                     ft = affinity.scale(txt, sc, sc, origin=txt.centroid)
+                    rc = ft.minimum_rotated_rectangle.buffer(NAME_RECESS_MARGIN, join_style=2)
                 for d in PEG_DIAMETERS:
                     free = body.buffer(-(d / 2 + PEG_HOLE_EXTRA / 2 + 0.8), join_style=1)
-                    if ft is not None:
-                        free = free.difference(ft.buffer(d / 2 + PEG_NAME_GAP, join_style=1))
+                    if rc is not None:
+                        free = free.difference(rc.buffer(d / 2 + PEG_HOLE_EXTRA / 2 + 0.6, join_style=1))
                     if free.is_empty:
                         continue
                     part = max(free.geoms, key=lambda q: q.area) if hasattr(free, 'geoms') else free
                     c = polylabel(part, 0.05)
                     if part.buffer(1e-6).contains(c):
                         peg = (c.x, c.y, d); break
-                ftxt = ft
+                ftxt, rect = ft, rc
                 if peg:
                     break
             ring = pk.exterior
             n = max(RIB_MIN, int(ring.length // RIB_SPACING))
             ribs = [ring.interpolate((i + 0.5) / n, normalized=True) for i in range(n)]
-            locks[key] = (ftxt, peg, ribs)
+            locks[key] = (ftxt, peg, ribs, rect)
         print(f'  peg style: posts in {sum(1 for v in locks.values() if v[1])}/{len(locks)} pockets')
 
     # ---- board
@@ -399,7 +400,7 @@ def main():
     if LOCK_STYLE == 'peg':
         floor_txt = unary_union([v[0] for v in locks.values() if v[0] is not None])
         board = board + extrude(floor_txt, BASE_H - 0.01, PEG_FLOOR_NAME_H + 0.01)
-        for key, (ftxt, peg, ribs) in locks.items():
+        for key, (ftxt, peg, ribs, rect) in locks.items():
             if peg:
                 x, y, d = peg
                 board = board + m3d.Manifold.cylinder(PEG_H + 0.01, d / 2, d / 2, 48).translate([x, y, BASE_H - 0.01])
@@ -456,9 +457,9 @@ def main():
         if txt is not None and not txt.is_empty:
             solid = solid + extrude(txt, PIECE_H - 0.01, TEXT_H + 0.01)
         if LOCK_STYLE == 'peg':
-            ftxt, peg, _ = locks[key]
-            if ftxt is not None:
-                rec = ftxt.buffer(NAME_RECESS_GROW, join_style=1, quad_segs=3).simplify(0.02).intersection(body.buffer(-0.6))
+            ftxt, peg, _, rect = locks[key]
+            if rect is not None:            # plain rectangle: the floor name sits inside it, touching nothing
+                rec = rect.intersection(body.buffer(-0.6, join_style=1))
                 solid = solid - extrude(rec, -1, NAME_RECESS_DEPTH + 1)
             if peg:
                 x, y, d = peg
