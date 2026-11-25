@@ -9,3 +9,5 @@ node_modules/
 quran_heart_puzzle.zip
 quran_heart_STL.zip
 heart_boxes_STL.zip
+__pycache__/
+*.pyc
