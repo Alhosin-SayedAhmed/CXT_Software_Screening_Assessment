@@ -27,8 +27,8 @@ SIZES       = [60, 80, 100]
 PETALS      = 12
 RING_WALL   = 3.5
 FABRIC_GAP  = 0.35     # radial room for the fabric at the seated position
-TAPER       = 0.6      # ring + bore narrow by this (radial) toward the front -> pushing harder clamps tighter
-LIP_W       = 1.5      # front lip: ring cannot pass out of the front (45 deg seat)
+TAPER       = 0.6      # ring + bore narrow by this (radial) toward the back -> pushing harder clamps tighter
+LIP_W       = 1.5      # back lip (on the bed): ring cannot pass out of the back (45 deg seat)
 LIP_T       = 1.2      # lip thickness above the seat
 RIM_WIDTH   = 5.0
 H           = 9.0      # rim height = ring height
@@ -42,7 +42,7 @@ TEXTURE     = "motifs" # "motifs" = few large shapes (slicer-friendly), "leaves"
 HANG_HOLE_D = 4.0
 RING_CHAMF  = 0.6
 Z_SEAT      = H - LIP_T - LIP_W   # where the tapered bore meets the 45 deg lip seat
-RING_H      = H - LIP_T           # ring height: flush with the back when seated
+RING_H      = H - LIP_T           # ring height: flush with the FRONT when seated (white ring visible at the front)
 SEG         = 360      # circle resolution
 ARC         = 8        # segments per rounded edge
 
@@ -160,7 +160,7 @@ def frame(D, style):
     ro_b = D / 2 + RING_WALL                 # ring outer radius at its back (wide) end
     Rb = ro_b + FABRIC_GAP                   # bore radius at the back (entry)
     Rf = ro_b - TAPER + FABRIC_GAP           # bore radius at the lip seat
-    Ri = Rf - LIP_W                          # lip inner radius = visible inner edge of the rim
+    Ri = Rf - LIP_W                          # lip inner radius (lip sits on the bed side)
     Ro = Rb + RIM_WIDTH
     Rc = Ro + 5.0
     rp = 2 * Rc * math.sin(math.pi / PETALS) * 0.55
@@ -204,6 +204,8 @@ def frame(D, style):
     c = RING_CHAMF
     Rb_c = Rb - TAPER * c / Z_SEAT
     space = [(Ri - 1, -1), (Rb_c + c, -1), (Rb_c + c, 0.0), (Rb_c, c), (Rf, Z_SEAT), (Ri, Z_SEAT + LIP_W), (Ri, H + 1), (Ri - 1, H + 1)]
+    # ring enters from the FRONT (top) and seats on a lip at the BACK (bed side): mirror the bore in z
+    space = [(r, H - z) for r, z in space][::-1]
     body = body - Manifold.revolve(CrossSection([space]), SEG)
 
     # ---- leaf texture on the flat faces ----
@@ -219,11 +221,11 @@ def frame(D, style):
             return motif_pattern(Rc, rp, r_in, Ro, plate_face, rim_face)
         return leaf_pattern(plate_face, seed), leaf_pattern(rim_face, seed + 1)
     if TEXTURE:
-        pf, rf = tex(D)
+        pf, rf = tex(D, r_in=Rb + RING_CHAMF)          # front rim face starts at the wide bore entry
         body = body + Manifold.extrude(to_cs(pf), TEX_H + 0.05).translate([0, 0, z1 - 0.05])
         body = body + Manifold.extrude(to_cs(rf), TEX_H + 0.05).translate([0, 0, H - 0.05])
         if style == "bedside":                                          # same decoration engraved into the flat bed face
-            pb, rb = tex(D + 7, r_in=Rb + RING_CHAMF)
+            pb, rb = tex(D + 7, r_in=Ri)                # back rim face starts at the lip
             pb = pb.difference(Point(0, Rc).buffer(HANG_HOLE_D / 2 + 1.2, 24))
             body = body - Manifold.extrude(to_cs(pb), BACK_DEPTH + 0.5).translate([0, 0, -0.5])
             body = body - Manifold.extrude(to_cs(rb), BACK_DEPTH + 0.5).translate([0, 0, -0.5])
@@ -235,7 +237,8 @@ def frame(D, style):
     return body, 2 * Rtip
 
 def ring(D):
-    # tapered ring: wide end = back (on the bed), narrow 45 deg end goes in first and seats on the lip
+    # tapered ring (printed wide end down): narrow 45 deg end goes in first from the front and seats on the back lip;
+    # the wide end ends flush with the front of the frame
     ri, ro, c = D / 2, D / 2 + RING_WALL, RING_CHAMF
     prof = [(ri, 0), (ro - c, 0), (ro - TAPER * c / Z_SEAT, c), (ro - TAPER, Z_SEAT),
             (ro - TAPER - LIP_W, RING_H), (ri, RING_H)]
