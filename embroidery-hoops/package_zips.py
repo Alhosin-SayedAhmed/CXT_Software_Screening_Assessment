@@ -94,5 +94,52 @@ def main():
     for zp in ("طارات_تطريز_وردة_Bambu_A1.zip", "ملفات_STL_طارات_التطريز.zip", "نسخة_احتياطي_من_غير_زخرفة.zip"):
         zz = zipfile.ZipFile(zp); print(zp, len(zz.namelist()), "files", round(os.path.getsize(zp) / 1e6, 1), "MB", "ok" if zz.testzip() is None else "BAD")
 
+HEART = {
+ "2side": ("قلب_مزخرف_من_الناحيتين", "إطار_قلب_مزخرف_من_الناحيتين",
+           "طارة تطريز قلب — مزخرفة من الناحيتين (من غير دعامات)\n==========================================\n"
+           "قطعتين: إطار قلب حتة واحدة + حلقة قلب بتتقفل جواه بتكة.\n"
+           "- الوش: الحافة بارزة، الأطراف مدوّرة، وردة صغيرة على كل بتلة + ورقتين بين البتلات + خط متموّج، بارزين 0.4 مم.\n"
+           "- الضهر (على البليتة): نفس الزخرفة بارزة 0.6 مم والأرضية بينها غاطسة. حرف البتلات مشطوف.\n"
+           "- خرم التعليق في البتلة اللي فوق في نص القلب.\n\n"
+           "✅ من غير دعامات خالص — اقفل Support. أطول مسافة Bridge فوق الأرضية الغاطسة 6.2 مم.\n"),
+ "1side": ("قلب_مزخرف_من_ناحية_واحدة", "إطار_قلب_مزخرف_من_ناحية_واحدة",
+           "طارة تطريز قلب — مزخرفة من ناحية واحدة\n==========================================\n"
+           "قطعتين: إطار قلب حتة واحدة + حلقة قلب بتتقفل جواه بتكة.\n"
+           "- الوش: الحافة بارزة، الأطراف مدوّرة، والزخرفة بارزة 0.4 مم.\n"
+           "- الضهر: مستوي.\n\n✅ من غير دعامات خالص.\n"),
+}
+HEART_SIZES = """
+المقاسات (عرض فتحة القماش):
+- 60 مم  → القلب الخارجي 114 × 103 مم
+- 80 مم  → القلب الخارجي 136 × 122 مم
+- 100 مم → القلب الخارجي 157 × 140 مم
+(كل مقاس: الإطار + الحلقة بيدخلوا على بليتة A1 واحدة)
+"""
+
+def heart():
+    common = COMMON[:COMMON.index("المقاسات:")] + HEART_SIZES + COMMON[COMMON.index("جوه كل فولدر مقاس:") - 1:]
+    with zipfile.ZipFile("طارات_تطريز_قلب_Bambu_A1.zip", "w", zipfile.ZIP_DEFLATED, compresslevel=9) as z:
+        for tag, (folder, _, intro) in HEART.items():
+            z.writestr(f"{folder}/اقرأني_طريقة_الطباعة.txt", "\ufeff" + intro + common)
+            z.write("heart_map_80mm.png", f"{folder}/صورة_الوش_والضهر.png")
+            for D in SIZES:
+                sub = f"{folder}/مقاس_{D}_مم"
+                z.write(f"stl/heart_{D}mm_{tag}_plate.3mf", f"{sub}/بليتة_جاهزة_للطباعة_{D}مم.3mf")
+                z.write(f"stl/heart_{D}mm_{tag}_frame.stl", f"{sub}/الإطار_{D}مم.stl")
+                z.write(f"stl/heart_{D}mm_{tag}_ring.stl", f"{sub}/الحلقة_{D}مم.stl")
+    shutil.rmtree("ملفات_STL_قلب", ignore_errors=True); os.makedirs("ملفات_STL_قلب")
+    for tag, (_, fname, _) in HEART.items():
+        for D in SIZES:
+            shutil.copy(f"stl/heart_{D}mm_{tag}_frame.stl", f"ملفات_STL_قلب/{fname}_{D}مم.stl")
+    for D in SIZES:
+        shutil.copy(f"stl/heart_{D}mm_2side_ring.stl", f"ملفات_STL_قلب/حلقة_قلب_{D}مم.stl")
+    with zipfile.ZipFile("ملفات_STL_طارة_القلب.zip", "w", zipfile.ZIP_DEFLATED, compresslevel=9) as z:
+        for f in sorted(glob.glob("ملفات_STL_قلب/*.stl")):
+            z.write(f, f)
+    for zp in ("طارات_تطريز_قلب_Bambu_A1.zip", "ملفات_STL_طارة_القلب.zip"):
+        zz = zipfile.ZipFile(zp); print(zp, len(zz.namelist()), "files", round(os.path.getsize(zp) / 1e6, 1), "MB", "ok" if zz.testzip() is None else "BAD")
+
 if __name__ == "__main__":
-    main()
+    import sys
+    if "--heart" in sys.argv: heart()
+    else: main()
