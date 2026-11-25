@@ -8,9 +8,11 @@ that created hundreds of tiny top surfaces and Bambu Studio could hang at
   * the flower plate is a single loft of scaled copies of its outline (it is star-shaped),
   * the leaf texture is simplified (fewer, cleaner polygons).
 
-Styles (both two parts: frame + snap-in ring):
-  double : rim raised on both faces; raised leaves front, engraved leaves back (small supports)
-  single : decorated front, flat back on the bed (no supports)
+Styles (all two parts: frame + snap-in ring):
+  bedside: decorated on BOTH faces, NO supports: raised rim + raised decoration on the front,
+           flat bed face with the same decoration engraved 0.6 mm and a 45 deg bevelled edge
+  single : decorated front, plain flat back (no supports)
+  double : (old) rim raised on both faces, needs small supports under the petals
 """
 import math, os, random
 import numpy as np
@@ -30,7 +32,9 @@ H           = 9.0      # rim height = ring height
 PLATE_T     = 4.0      # petal thickness
 FILLET      = 1.2
 BED_CHAMFER = 0.8
-TEX_H       = 0.4      # texture height (front) / depth (back)
+TEX_H       = 0.4      # raised decoration height (front)
+BACK_DEPTH  = 0.6      # engraved decoration depth on the bed side (style "bedside")
+BACK_BEVEL  = 0.8      # 45 deg bevel on the bed-side petal edge (no support needed)
 TEXTURE     = "motifs" # "motifs" = few large shapes (slicer-friendly), "leaves" = dense leaves, None = smooth
 HANG_HOLE_D = 4.0
 BEAD, GROOVE, RING_CHAMF = 0.5, 0.8, 0.6
@@ -158,10 +162,12 @@ def frame(D, style):
     f = FILLET
 
     # ---- flower plate (one smooth loft) ----
-    z0, z1 = (0.0, PLATE_T) if style == "single" else ((H - PLATE_T) / 2, (H + PLATE_T) / 2)
+    z0, z1 = (0.0, PLATE_T) if style in ("single", "bedside") else ((H - PLATE_T) / 2, (H + PLATE_T) / 2)
     top = [(z1 - f + dz, 1 - ins / Rtip) for dz, ins in fillet_pts(f)]
     if style == "single":
         rings = [(z0, 1.0)] + top
+    elif style == "bedside":
+        rings = [(0.0, 1 - BACK_BEVEL / Rtip), (BACK_BEVEL, 1.0)] + top
     else:
         bot = [(z0 + f - dz, 1 - ins / Rtip) for dz, ins in fillet_pts(f)][::-1]
         rings = bot + top
@@ -171,6 +177,8 @@ def frame(D, style):
     prof = []
     if style == "single":
         prof += [(Ri, 0.0), (Ro, 0.0)]
+    elif style == "bedside":                                            # bore entry chamfer on the bed side
+        prof += [(Ri + RING_CHAMF, 0.0), (Ro, 0.0)]
     else:
         c = BED_CHAMFER
         prof += [(Ri + c, 0.0), (Ro - c, 0.0), (Ro, c)]
@@ -178,13 +186,17 @@ def frame(D, style):
         prof.append((Ro - f + f * math.cos(a), H - f + f * math.sin(a)))
     for a in np.linspace(math.pi / 2, math.pi, ARC + 1)[1:]:            # inner top arc
         prof.append((Ri + f + f * math.cos(a), H - f + f * math.sin(a)))
-    if style != "single":
+    if style == "double":
         prof.append((Ri, BED_CHAMFER))
+    elif style == "bedside":
+        prof.append((Ri, RING_CHAMF))
     rim = Manifold.revolve(CrossSection([prof]), SEG)
 
     body = plate + rim
     body = body - Manifold.cylinder(H + 2, Ri, Ri, SEG).translate([0, 0, -1])
     body = body - Manifold.cylinder(H + 2, HANG_HOLE_D / 2, HANG_HOLE_D / 2, 32).translate([0, Rc, -1])
+    if style == "bedside":                                              # entry chamfer at the bottom of the bore
+        body = body - Manifold.cylinder(RING_CHAMF + 0.01, Ri + RING_CHAMF, Ri - 0.01, SEG).translate([0, 0, -0.01])
 
     # ---- leaf texture on the flat faces ----
     from shapely.geometry import Polygon  # noqa: E402
@@ -201,6 +213,11 @@ def frame(D, style):
         pf, rf = tex(D)
         body = body + Manifold.extrude(to_cs(pf), TEX_H + 0.05).translate([0, 0, z1 - 0.05])
         body = body + Manifold.extrude(to_cs(rf), TEX_H + 0.05).translate([0, 0, H - 0.05])
+        if style == "bedside":                                          # same decoration engraved into the flat bed face
+            pb, rb = tex(D + 7)
+            pb = pb.difference(Point(0, Rc).buffer(HANG_HOLE_D / 2 + 1.2, 24))
+            body = body - Manifold.extrude(to_cs(pb), BACK_DEPTH + 0.5).translate([0, 0, -0.5])
+            body = body - Manifold.extrude(to_cs(rb), BACK_DEPTH + 0.5).translate([0, 0, -0.5])
         if style == "double":                                           # same decoration, engraved on the back
             pb, rb = tex(D + 7)
             body = body - Manifold.extrude(to_cs(pb), TEX_H + 0.5).translate([0, 0, z0 - 0.5])
@@ -228,7 +245,7 @@ if __name__ == "__main__":
     suffix = "_smooth" if TEXTURE is None else ""
     out = os.path.join(os.path.dirname(os.path.abspath(__file__)), "stl"); os.makedirs(out, exist_ok=True)
     BED, M = 256.0, 3.0
-    for style, tag in (("double", "2part"), ("single", "1side")):
+    for style, tag in (("bedside", "2side"), ("single", "1side")):
         for D in SIZES:
             f, outer = frame(D, style)
             assert f.status().name == "NoError" and len(f.decompose()) == 1, "frame must be one clean solid"

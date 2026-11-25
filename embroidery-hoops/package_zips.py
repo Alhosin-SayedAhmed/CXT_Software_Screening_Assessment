@@ -1,17 +1,16 @@
 """Builds the Arabic-named zip bundles from ./stl (run make_hoops_v2.py first)."""
 import zipfile, os, shutil, glob
 STYLES = {
- "2part": ("طارة_مزخرفة_من_الناحيتين", "إطار_مزخرف_من_الناحيتين", """طارة تطريز وردة — مزخرفة من الناحيتين
+ "2side": ("طارة_مزخرفة_من_الناحيتين", "إطار_مزخرف_من_الناحيتين", """طارة تطريز وردة — مزخرفة من الناحيتين (من غير دعامات)
 ==========================================
 قطعتين: إطار حتة واحدة + حلقة بتتقفل جواه بتكة.
-- الحافة الدايرية بارزة من الوش ومن الضهر، والأطراف مدوّرة.
 - الزخرفة: وردة صغيرة على كل بتلة + ورقتين بين كل بتلتين + خط متموّج على الحافة.
-- الوش: الزخرفة بارزة 0.4 مم.  الضهر: نفس الزخرفة محفورة (غايرة) 0.4 مم.
+- الوش: الحافة الدايرية بارزة، الأطراف مدوّرة، والزخرفة بارزة 0.4 مم.
+- الضهر (الناحية اللي على البليتة): مستوي، وعليه نفس الزخرفة محفورة 0.6 مم، وحرف البتلات مشطوف.
 - ارتفاع الحافة 9 مم — تخانة البتلات 4 مم.
 
-⚠️ الإطار محتاج دعامات صغيرة (البتلات مرفوعة 2.5 مم فوق البليتة):
-   Support: Enable ✔ — Type: tree(auto) — On build plate only ✔ — Top Z distance 0.2
-   الحلقة من غير دعامات.
+✅ من غير دعامات خالص — اقفل Support. الضهر قاعد على البليتة، والزخرفة المحفورة بتطلع
+   بملمس البليتة (Textured PEI) والطبقة اللي فوقها بتعدّي عليها (Bridge) لوحدها.
 """),
  "1side": ("طارة_مزخرفة_من_ناحية_واحدة", "إطار_مزخرف_من_ناحية_واحدة", """طارة تطريز وردة — مزخرفة من ناحية واحدة
 ==========================================
@@ -29,8 +28,9 @@ COMMON = """
 - الخامة: PLA أو PLA Matte — فوهة 0.4
 - البروفايل: 0.20mm Standard @BBL A1
 - Wall loops = 3 — Sparse infill = 15% (Grid أو Gyroid)
-- Top surface pattern = Monotonic line (علشان النقشة تطلع نضيفة)
-- Ironing = مقفول (هيمسح النقشة)
+- Top surface pattern = Monotonic line (علشان الزخرفة تطلع نضيفة)
+- Support = مقفول
+- Ironing = مقفول (هيمسح الزخرفة)
 - البليتة: Textured PEI
 - ماتعملش Scale للموديل — هيبوّظ تركيب الحلقة في الإطار. لو محتاج مقاس تاني اطلبه.
 
@@ -76,7 +76,7 @@ def main():
         for D in SIZES:
             shutil.copy(f"stl/hoop_{D}mm_{tag}_frame.stl", f"ملفات_STL/{fname}_{D}مم.stl")
     for D in SIZES:
-        shutil.copy(f"stl/hoop_{D}mm_2part_ring.stl", f"ملفات_STL/حلقة_{D}مم.stl")
+        shutil.copy(f"stl/hoop_{D}mm_2side_ring.stl", f"ملفات_STL/حلقة_{D}مم.stl")
     with zipfile.ZipFile("ملفات_STL_طارات_التطريز.zip", "w", zipfile.ZIP_DEFLATED, compresslevel=9) as z:
         for f in sorted(glob.glob("ملفات_STL/*.stl")):
             z.write(f, f)
@@ -86,7 +86,7 @@ def main():
             for D in SIZES:
                 z.write(f"stl/hoop_{D}mm_{tag}_smooth_frame.stl", f"من_غير_زخرفة/{fname.replace('مزخرف', 'ناعم')}_{D}مم.stl")
         for D in SIZES:
-            z.write(f"stl/hoop_{D}mm_2part_smooth_ring.stl", f"من_غير_زخرفة/حلقة_{D}مم.stl")
+            z.write(f"stl/hoop_{D}mm_2side_smooth_ring.stl", f"من_غير_زخرفة/حلقة_{D}مم.stl")
     for zp in ("طارات_تطريز_وردة_Bambu_A1.zip", "ملفات_STL_طارات_التطريز.zip", "نسخة_احتياطي_من_غير_زخرفة.zip"):
         zz = zipfile.ZipFile(zp); print(zp, len(zz.namelist()), "files", round(os.path.getsize(zp) / 1e6, 1), "MB", "ok" if zz.testzip() is None else "BAD")
 
