@@ -57,13 +57,11 @@ KNOB_R         = 3.5     # mm jigsaw knob head radius
 KNOB_NECK_W    = 4.0     # mm jigsaw knob neck width
 KNOB_NECK_L    = 3.0     # mm jigsaw knob neck length
 KNOB_CLEAR     = 0.15    # mm gap per side in the jigsaw joint
-# the hanger sits in front of the heart: a tongue covers each lug and a jigsaw knob on the
-# tongue's back presses into the lug's socket. The tongue stops the knob going through, the
-# knob's round head stops the heart dropping off.
-HANGER_T       = 3.0     # mm hanger plate thickness
-HANGER_GAP     = 0.2     # mm between the heart's front face and the hanger tongues
+# the hanger lies level with the heart; its jigsaw knobs press into the lug sockets.
+# A thin back layer reaches down behind each lug (hidden against the wall), so the knob
+# cannot slide through the socket, and the snug fit holds it in place.
 HANGER_KNOB_CLEAR = 0.07 # mm gap per side between knob and socket (snug press fit)
-HANGER_TEXT_D  = 0.6     # mm Basmala engraving depth (hanger prints face down)
+HANGER_BACK_T  = 1.0     # mm back layer behind the hanger and behind each lug
 PLATE          = 250.0   # mm usable square on the A1 plate
 PLATE_GAP      = 3.0     # mm between pieces on a plate
 
@@ -369,29 +367,26 @@ def main():
     band = shapely.geometry.box(lo_x, y_join, hi_x, y_join + HANGER_H).buffer(-6).buffer(6)
     ear_c = Point(cx, y_join + HANGER_H + 4)
     ear = unary_union([ear_c.buffer(8, 64), shapely.geometry.box(cx - 8, y_join + HANGER_H - 3, cx + 8, ear_c.y)])
-    z0 = TOP + HANGER_GAP                                   # hanger's back face, just in front of the heart
-    tongues = [shapely.geometry.box(x - LUG_W / 2 + 1, y_join - 13, x + LUG_W / 2 - 1, y_join + 4)
-               .buffer(-2, join_style=1).buffer(2, join_style=1) for x in lug_x]
-    banner = unary_union([band, ear] + tongues)
-    banner = banner.difference(ear_c.buffer(HANGER_HOLE_D / 2, 48))
-    text_area = band.buffer(-3.5)
-    btxt, bem = fit_text(HANGER_TEXT, text_area, font=HANGER_FONT, angles=(0,), max_em=40)
-    hanger = extrude(banner, z0, HANGER_T)
-    if btxt is not None:
-        btxt = btxt.buffer(0.03, join_style=1).buffer(-0.05, join_style=1).buffer(0.02, join_style=1).simplify(0.01)
-        hanger = hanger - extrude(btxt, z0 + HANGER_T - HANGER_TEXT_D, HANGER_TEXT_D + 1)
-    # knobs: the socket's own shape, a hair smaller, on the back of each tongue
     head_y = y_join - KNOB_NECK_L - KNOB_R
     cl = KNOB_CLEAR - HANGER_KNOB_CLEAR
-    for x in lug_x:
-        k = unary_union([Point(x, head_y).buffer(KNOB_R + cl, 64),
-                         shapely.geometry.box(x - KNOB_NECK_W / 2 - cl, head_y, x + KNOB_NECK_W / 2 + cl, y_join + 1)])
-        k = k.intersection(shapely.geometry.box(-1e3, -1e3, 1e3, y_join + 1))
-        hanger = hanger + extrude(k, 0.05, z0 - 0.05 + 0.01)
+    knobs = [unary_union([Point(x, head_y).buffer(KNOB_R + cl, 64),
+                          shapely.geometry.box(x - KNOB_NECK_W / 2 - cl, head_y, x + KNOB_NECK_W / 2 + cl, y_join + 1)])
+             .intersection(shapely.geometry.box(-1e3, -1e3, 1e3, y_join + 1)) for x in lug_x]
+    banner = unary_union([band, ear] + knobs)
+    banner = banner.difference(ear_c.buffer(HANGER_HOLE_D / 2, 48))
+    backs = [shapely.geometry.box(x - LUG_W / 2 + 0.5, head_y - KNOB_R - 3, x + LUG_W / 2 - 0.5, y_join + 2)
+             .buffer(-2, join_style=1).buffer(2, join_style=1) for x in lug_x]
+    back = unary_union([banner] + backs).difference(ear_c.buffer(HANGER_HOLE_D / 2, 48))
+    text_area = band.buffer(-3.5)
+    btxt, bem = fit_text(HANGER_TEXT, text_area, font=HANGER_FONT, angles=(0,), max_em=40)
+    # banner + knobs from z=-0.5 up to the heart's front face; back layer from -1 to exactly 0 (the heart's back face)
+    hanger = extrude(banner, -0.5, TOP + 0.5) + extrude(back, -HANGER_BACK_T, HANGER_BACK_T)
+    if btxt is not None:
+        hanger = hanger + extrude(btxt, TOP - 0.01, TEXT_H + 0.01)
     to_trimesh(hanger).export(os.path.join(out, 'hanger_assembled.stl'))
-    # print orientation: face down (Basmala on the plate), pins pointing up
-    to_trimesh(hanger.rotate([180, 0, 0]).translate([0, 0, z0 + HANGER_T])).export(os.path.join(out, 'hanger.stl'))
-    json.dump(dict(text_floor_z=z0 + HANGER_T - HANGER_TEXT_D), open(os.path.join(out, 'hanger_pose.json'), 'w'))
+    # print orientation: back layer on the plate, Basmala up
+    to_trimesh(hanger.translate([0, 0, HANGER_BACK_T])).export(os.path.join(out, 'hanger.stl'))
+    json.dump(dict(text_from_z=TOP), open(os.path.join(out, 'hanger_pose.json'), 'w'))
     print(f'  hanger.stl written ({hi_x-lo_x:.0f} x {HANGER_H+8:.0f} mm, basmala {bem:.1f} mm)')
 
     # ---- pieces
