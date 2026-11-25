@@ -57,11 +57,12 @@ KNOB_R         = 3.5     # mm jigsaw knob head radius
 KNOB_NECK_W    = 4.0     # mm jigsaw knob neck width
 KNOB_NECK_L    = 3.0     # mm jigsaw knob neck length
 KNOB_CLEAR     = 0.15    # mm gap per side in the jigsaw joint
-# the hanger lies level with the heart; its jigsaw knobs press into the lug sockets.
-# A thin back layer reaches down behind each lug (hidden against the wall), so the knob
-# cannot slide through the socket, and the snug fit holds it in place.
-HANGER_KNOB_CLEAR = 0.07 # mm gap per side between knob and socket (snug press fit)
-HANGER_BACK_T  = 1.0     # mm back layer behind the hanger and behind each lug
+# the hanger lies level with the heart (original look). Its jigsaw knobs are slightly
+# tapered: a hair smaller than the socket at the front, a hair bigger at the back. Pushed in
+# from behind, each knob wedges tight in its socket and cannot pass through to the front.
+KNOB_FRONT_GAP = 0.10    # mm per side the knob is smaller than the socket at the front face
+KNOB_BACK_GRIP = 0.08    # mm per side the knob is bigger than the socket at the back face
+KNOB_STEPS     = 14      # taper steps through the thickness (one per 0.2 mm layer)
 PLATE          = 250.0   # mm usable square on the A1 plate
 PLATE_GAP      = 3.0     # mm between pieces on a plate
 
@@ -368,24 +369,25 @@ def main():
     ear_c = Point(cx, y_join + HANGER_H + 4)
     ear = unary_union([ear_c.buffer(8, 64), shapely.geometry.box(cx - 8, y_join + HANGER_H - 3, cx + 8, ear_c.y)])
     head_y = y_join - KNOB_NECK_L - KNOB_R
-    cl = KNOB_CLEAR - HANGER_KNOB_CLEAR
-    knobs = [unary_union([Point(x, head_y).buffer(KNOB_R + cl, 64),
-                          shapely.geometry.box(x - KNOB_NECK_W / 2 - cl, head_y, x + KNOB_NECK_W / 2 + cl, y_join + 1)])
-             .intersection(shapely.geometry.box(-1e3, -1e3, 1e3, y_join + 1)) for x in lug_x]
-    banner = unary_union([band, ear] + knobs)
-    banner = banner.difference(ear_c.buffer(HANGER_HOLE_D / 2, 48))
-    backs = [shapely.geometry.box(x - LUG_W / 2 + 0.5, head_y - KNOB_R - 3, x + LUG_W / 2 - 0.5, y_join + 2)
-             .buffer(-2, join_style=1).buffer(2, join_style=1) for x in lug_x]
-    back = unary_union([banner] + backs).difference(ear_c.buffer(HANGER_HOLE_D / 2, 48))
+    def socket_shape(x, grow):
+        g = KNOB_CLEAR + grow
+        return unary_union([Point(x, head_y).buffer(KNOB_R + g, 64),
+                            shapely.geometry.box(x - KNOB_NECK_W / 2 - g, head_y, x + KNOB_NECK_W / 2 + g, y_join + 1)]) \
+            .intersection(shapely.geometry.box(-1e3, -1e3, 1e3, y_join + 1))
+    banner = unary_union([band, ear]).difference(ear_c.buffer(HANGER_HOLE_D / 2, 48))
     text_area = band.buffer(-3.5)
     btxt, bem = fit_text(HANGER_TEXT, text_area, font=HANGER_FONT, angles=(0,), max_em=40)
-    # banner + knobs from z=-0.5 up to the heart's front face; back layer from -1 to exactly 0 (the heart's back face)
-    hanger = extrude(banner, -0.5, TOP + 0.5) + extrude(back, -HANGER_BACK_T, HANGER_BACK_T)
+    hanger = extrude(banner, 0, TOP)
+    for x in lug_x:
+        for i in range(KNOB_STEPS):                      # back (z=0) slightly big -> front slightly small
+            t = (i + 0.5) / KNOB_STEPS
+            d = KNOB_BACK_GRIP + (-KNOB_FRONT_GAP - KNOB_BACK_GRIP) * t
+            z_a = TOP * i / KNOB_STEPS
+            hanger = hanger + extrude(socket_shape(x, d), z_a - (0.01 if i else 0), TOP / KNOB_STEPS + (0.01 if i else 0))
     if btxt is not None:
         hanger = hanger + extrude(btxt, TOP - 0.01, TEXT_H + 0.01)
     to_trimesh(hanger).export(os.path.join(out, 'hanger_assembled.stl'))
-    # print orientation: back layer on the plate, Basmala up
-    to_trimesh(hanger.translate([0, 0, HANGER_BACK_T])).export(os.path.join(out, 'hanger.stl'))
+    to_trimesh(hanger).export(os.path.join(out, 'hanger.stl'))          # prints as is: back on the plate
     json.dump(dict(text_from_z=TOP), open(os.path.join(out, 'hanger_pose.json'), 'w'))
     print(f'  hanger.stl written ({hi_x-lo_x:.0f} x {HANGER_H+8:.0f} mm, basmala {bem:.1f} mm)')
 
