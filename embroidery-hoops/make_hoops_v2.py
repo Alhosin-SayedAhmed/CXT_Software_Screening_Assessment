@@ -1,0 +1,195 @@
+"""
+Two-part scalloped embroidery hoop - v2 (slicer-friendly geometry).
+
+Why v2: v1 built the rounded edges from 0.2 mm stacked steps; with the leaf texture on top
+that created hundreds of tiny top surfaces and Bambu Studio could hang at
+"Generating infill regions". v2 builds every rounded edge as ONE smooth surface:
+  * the round rim is a revolved profile with true arcs,
+  * the flower plate is a single loft of scaled copies of its outline (it is star-shaped),
+  * the leaf texture is simplified (fewer, cleaner polygons).
+
+Styles (both two parts: frame + snap-in ring):
+  double : rim raised on both faces; raised leaves front, engraved leaves back (small supports)
+  single : decorated front, flat back on the bed (no supports)
+"""
+import math, os, random
+import numpy as np
+from manifold3d import Manifold, CrossSection, Mesh, triangulate
+from shapely.geometry import Point
+from shapely.geometry.polygon import orient
+from shapely.affinity import rotate, translate, scale
+from shapely.ops import unary_union
+import trimesh
+
+SIZES       = [60, 80, 100]
+PETALS      = 12
+RING_WALL   = 3.5
+FABRIC_GAP  = 0.55
+RIM_WIDTH   = 5.0
+H           = 9.0      # rim height = ring height
+PLATE_T     = 4.0      # petal thickness
+FILLET      = 1.2
+BED_CHAMFER = 0.8
+TEX_H       = 0.4      # leaf texture height / depth
+HANG_HOLE_D = 4.0
+BEAD, GROOVE, RING_CHAMF = 0.5, 0.8, 0.6
+SEG         = 360      # circle resolution
+ARC         = 8        # segments per rounded edge
+
+def to_cs(geom):
+    polys = []
+    for g in getattr(geom, "geoms", [geom]):
+        if g.is_empty: continue
+        g = orient(g, 1.0)
+        polys.append(np.asarray(g.exterior.coords[:-1], dtype=np.float64))
+        for h in g.interiors:
+            polys.append(np.asarray(h.coords[:-1], dtype=np.float64))
+    return CrossSection(polys)
+
+def flower_outline(Rc, rp, n=720):
+    """Star-shaped flower outline sampled on n rays (radius = max of base circle and petals)."""
+    th = np.linspace(0, 2 * math.pi, n, endpoint=False)
+    r = np.full(n, Rc)
+    for i in range(PETALS):
+        a = 2 * math.pi * i / PETALS + math.pi / 2
+        cx, cy = Rc * math.cos(a), Rc * math.sin(a)
+        # ray/circle intersection: |t*u - c| = rp  -> t = u.c + sqrt((u.c)^2 - |c|^2 + rp^2)
+        uc = np.cos(th) * cx + np.sin(th) * cy
+        disc = uc ** 2 - (cx * cx + cy * cy) + rp * rp
+        ok = disc >= 0
+        r[ok] = np.maximum(r[ok], uc[ok] + np.sqrt(disc[ok]))
+    return np.stack([r * np.cos(th), r * np.sin(th)], 1)
+
+def loft(outline, rings):
+    """Solid from scaled copies of a star-shaped outline. rings = [(z, scale), ...] bottom->top."""
+    n, k = len(outline), len(rings)
+    verts = np.concatenate([np.c_[outline * s, np.full(n, z)] for z, s in rings])
+    faces = []
+    idx = np.arange(n)
+    for j in range(k - 1):
+        a, b = j * n + idx, j * n + (idx + 1) % n
+        c, d = (j + 1) * n + (idx + 1) % n, (j + 1) * n + idx
+        faces += [np.c_[a, b, c], np.c_[a, c, d]]
+    cap = np.asarray(triangulate([outline]))          # CCW triangles of the outline
+    faces += [cap[:, ::-1], cap + (k - 1) * n]         # bottom (flipped) + top
+    m = Manifold(Mesh(vert_properties=verts.astype(np.float32), tri_verts=np.concatenate(faces).astype(np.uint32)))
+    assert m.status().name == "NoError", m.status()
+    return m
+
+def fillet_pts(f, n=ARC):
+    """(dz, inset) along a quarter arc, from the flat side to the top."""
+    return [(f * math.sin(a), f - f * math.cos(a)) for a in np.linspace(0, math.pi / 2, n + 1)]
+
+def leaf_pattern(region, seed):
+    rnd = random.Random(seed)
+    minx, miny, maxx, maxy = region.bounds
+    leaf = scale(Point(0, 0).buffer(1.0, 6), 2.4, 0.95)
+    shapes, step, y, row = [], 4.8, miny, 0
+    while y < maxy:
+        x = minx + (step / 2 if row % 2 else 0)
+        while x < maxx:
+            px, py = x + rnd.uniform(-0.6, 0.6), y + rnd.uniform(-0.6, 0.6)
+            if rnd.random() < 0.75:
+                ang = math.degrees(math.atan2(py, px)) + 90 + rnd.uniform(-35, 35)
+                shapes.append(translate(rotate(leaf, ang, origin=(0, 0)), px, py))
+            else:
+                shapes.append(Point(px, py).buffer(0.9, 3))
+            x += step
+        y += step * 0.87
+        row += 1
+    pat = unary_union(shapes).intersection(region)
+    pat = pat.buffer(-0.4, 4).buffer(0.4, 4).simplify(0.1)          # drop slivers, keep it light
+    return unary_union([g for g in getattr(pat, "geoms", [pat]) if g.area > 1.2])
+
+def frame(D, style):
+    ring_od = D + 2 * RING_WALL
+    bore = ring_od + 2 * FABRIC_GAP
+    Ri, Ro = bore / 2, bore / 2 + RIM_WIDTH
+    Rc = Ro + 5.0
+    rp = 2 * Rc * math.sin(math.pi / PETALS) * 0.55
+    Rtip = Rc + rp
+    outline = flower_outline(Rc, rp)
+    f = FILLET
+
+    # ---- flower plate (one smooth loft) ----
+    z0, z1 = (0.0, PLATE_T) if style == "single" else ((H - PLATE_T) / 2, (H + PLATE_T) / 2)
+    top = [(z1 - f + dz, 1 - ins / Rtip) for dz, ins in fillet_pts(f)]
+    if style == "single":
+        rings = [(z0, 1.0)] + top
+    else:
+        bot = [(z0 + f - dz, 1 - ins / Rtip) for dz, ins in fillet_pts(f)][::-1]
+        rings = bot + top
+    plate = loft(outline, rings)
+
+    # ---- round rim (revolved profile with true arcs) ----
+    prof = []
+    if style == "single":
+        prof += [(Ri, 0.0), (Ro, 0.0)]
+    else:
+        c = BED_CHAMFER
+        prof += [(Ri + c, 0.0), (Ro - c, 0.0), (Ro, c)]
+    for a in np.linspace(0, math.pi / 2, ARC + 1):                      # outer top arc
+        prof.append((Ro - f + f * math.cos(a), H - f + f * math.sin(a)))
+    for a in np.linspace(math.pi / 2, math.pi, ARC + 1)[1:]:            # inner top arc
+        prof.append((Ri + f + f * math.cos(a), H - f + f * math.sin(a)))
+    if style != "single":
+        prof.append((Ri, BED_CHAMFER))
+    rim = Manifold.revolve(CrossSection([prof]), SEG)
+
+    body = plate + rim
+    body = body - Manifold.cylinder(H + 2, Ri, Ri, SEG).translate([0, 0, -1])
+    body = body - Manifold.cylinder(H + 2, HANG_HOLE_D / 2, HANG_HOLE_D / 2, 32).translate([0, Rc, -1])
+
+    # ---- leaf texture on the flat faces ----
+    from shapely.geometry import Polygon  # noqa: E402
+    flat_flower = Polygon(outline).buffer(-(f + 0.9))
+    hole = Point(0, Rc).buffer(HANG_HOLE_D / 2 + 1.2, 24)
+    plate_face = flat_flower.difference(Point(0, 0).buffer(Ro + 0.9, 128)).difference(hole)
+    e = max(f, BED_CHAMFER) + 0.4
+    rim_face = Point(0, 0).buffer(Ro - e, 128).difference(Point(0, 0).buffer(Ri + e, 128))
+    def tex(seed):
+        return leaf_pattern(plate_face, seed), leaf_pattern(rim_face, seed + 1)
+    pf, rf = tex(D)
+    raised = [Manifold.extrude(to_cs(pf), TEX_H + 0.05).translate([0, 0, z1 - 0.05]),
+              Manifold.extrude(to_cs(rf), TEX_H + 0.05).translate([0, 0, H - 0.05])]
+    for r_ in raised: body = body + r_
+    if style == "double":                                               # engraved leaves on the back
+        pb, rb = tex(D + 7)
+        body = body - Manifold.extrude(to_cs(pb), TEX_H + 0.5).translate([0, 0, z0 - 0.5])
+        body = body - Manifold.extrude(to_cs(rb), TEX_H + 0.5).translate([0, 0, -0.5])
+
+    # ---- snap groove in the bore ----
+    m = H / 2
+    g = [(Ri - 0.2, m - GROOVE - 0.5), (Ri + GROOVE, m - 0.3), (Ri + GROOVE, m + 0.3), (Ri - 0.2, m + GROOVE + 0.5)]
+    body = body - Manifold.revolve(CrossSection([g]), SEG)
+    return body, 2 * Rtip
+
+def ring(D):
+    ri, ro, c, m, b = D / 2, D / 2 + RING_WALL, RING_CHAMF, H / 2, BEAD
+    prof = [(ri, 0), (ro - c, 0), (ro, c), (ro, m - 2 * b), (ro + b, m - b), (ro + b, m + b), (ro, m + 2 * b),
+            (ro, H - c), (ro - c, H), (ri, H)]
+    return Manifold.revolve(CrossSection([prof]), SEG)
+
+def to_tm(m):
+    mesh = m.to_mesh()
+    return trimesh.Trimesh(np.asarray(mesh.vert_properties)[:, :3], np.asarray(mesh.tri_verts), process=False)
+
+if __name__ == "__main__":
+    out = os.path.join(os.path.dirname(os.path.abspath(__file__)), "stl"); os.makedirs(out, exist_ok=True)
+    BED, M = 256.0, 3.0
+    for style, tag in (("double", "2part"), ("single", "1side")):
+        for D in SIZES:
+            f, outer = frame(D, style)
+            assert f.status().name == "NoError" and len(f.decompose()) == 1, "frame must be one clean solid"
+            tf, tr = to_tm(f), to_tm(ring(D))
+            assert tf.is_watertight and tr.is_watertight
+            tf.export(os.path.join(out, f"hoop_{D}mm_{tag}_frame.stl"))
+            tr.export(os.path.join(out, f"hoop_{D}mm_{tag}_ring.stl"))
+            o, rr = outer / 2, D / 2 + RING_WALL + BEAD
+            fp, rp_ = (o + M, o + M), (BED - rr - M, BED - rr - M)
+            assert math.hypot(fp[0] - rp_[0], fp[1] - rp_[1]) > o + rr + 2
+            sc = trimesh.Scene()
+            sc.add_geometry(tf.copy().apply_translation([fp[0] - BED / 2, fp[1] - BED / 2, 0]), node_name="frame")
+            sc.add_geometry(tr.copy().apply_translation([rp_[0] - BED / 2, rp_[1] - BED / 2, 0]), node_name="ring")
+            sc.export(os.path.join(out, f"hoop_{D}mm_{tag}_plate.3mf"))
+            print(f"{style:6s} {D:3d}mm outer {outer:.1f}  faces {len(tf.faces):6d}  z {tf.bounds[0][2]:.2f}..{tf.bounds[1][2]:.2f}")
