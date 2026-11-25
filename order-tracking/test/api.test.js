@@ -1,18 +1,28 @@
 const { test, before, after } = require('node:test');
 const assert = require('node:assert/strict');
+const { Client } = require('pg');
 const { openDb } = require('../src/db');
 const { createApp } = require('../src/app');
 
-let server, base, db;
+// الاختبارات بتشتغل على داتابيس Postgres حقيقية (نفس اللي جوه Supabase).
+// ماتشغّلهاش على داتابيس الإنتاج: الاختبار بيمسح الجداول.
+const TEST_DB = process.env.TEST_DATABASE_URL || 'postgresql://tracker:tracker@localhost:5432/tracker_test';
+
+let server, base, db, sql;
 
 before(async () => {
-  db = openDb(':memory:');
+  sql = new Client({ connectionString: TEST_DB });
+  await sql.connect();
+  await sql.query('DROP TABLE IF EXISTS public.stage_history, public.orders CASCADE');
+  db = openDb(TEST_DB);
+  await db.init();
+  await db.init(); // التأكد إن تشغيل الـ schema مرتين مفيهوش مشكلة
   const app = createApp({ db, adminPassword: 'secret-pass-123', sessionSecret: 'x'.repeat(32), webhookSecret: 'hook-key' });
   await new Promise((r) => { server = app.listen(0, r); });
   base = `http://127.0.0.1:${server.address().port}`;
 });
 
-after(() => { server.close(); db.close(); });
+after(async () => { server.close(); await db.close(); await sql.end(); });
 
 const json = (method, body, cookie) => ({
   method,
@@ -108,4 +118,45 @@ test('webhook needs key and creates order', async () => {
   const pub = await (await fetch(base + '/api/track/777')).json();
   assert.equal(pub.stage, 'received');
   assert.equal(pub.product, 'باور بانك');
+});
+
+test('edits made directly in Supabase show up on the site', async () => {
+  const cookie = await login();
+  const res = await fetch(base + '/api/admin/orders', json('POST', { order_number: '3001', product: 'باور بانك' }, cookie));
+  assert.equal(res.status, 201);
+
+  // كأنك غيّرت المرحلة بإيدك من Table Editor في Supabase
+  await sql.query("UPDATE public.orders SET stage = 'quality', note = 'اتعدلت من Supabase' WHERE order_number = '3001'");
+
+  const pub = await (await fetch(base + '/api/track/3001')).json();
+  assert.equal(pub.stage, 'quality');
+  assert.equal(pub.note, 'اتعدلت من Supabase');
+  assert.deepEqual(pub.history.map((h) => h.stage), ['received', 'quality'], 'trigger logs stage changes');
+
+  // تعديل حاجة غير المرحلة مايزوّدش سجل جديد
+  await sql.query("UPDATE public.orders SET product = 'باور بانك 2' WHERE order_number = '3001'");
+  const again = await (await fetch(base + '/api/track/3001')).json();
+  assert.equal(again.history.length, 2);
+  assert.ok(new Date(again.updated_at) >= new Date(pub.updated_at));
+});
+
+test('row level security is on (public Supabase keys cannot read orders)', async () => {
+  const { rows } = await sql.query(
+    "SELECT relname, relrowsecurity FROM pg_class WHERE relname IN ('orders', 'stage_history') ORDER BY relname"
+  );
+  assert.deepEqual(rows, [
+    { relname: 'orders', relrowsecurity: true },
+    { relname: 'stage_history', relrowsecurity: true },
+  ]);
+});
+
+test('search treats % and _ literally', async () => {
+  const cookie = await login();
+  const list = await (await fetch(base + '/api/admin/orders?search=%25', { headers: { Cookie: cookie } })).json();
+  assert.equal(list.orders.length, 0);
+});
+
+test('API responses are not cached', async () => {
+  const res = await fetch(base + '/api/track/3001');
+  assert.equal(res.headers.get('cache-control'), 'no-store');
 });

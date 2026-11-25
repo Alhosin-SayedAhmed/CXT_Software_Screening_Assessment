@@ -24,8 +24,12 @@ if (!SESSION_SECRET) {
   SESSION_SECRET = crypto.randomBytes(32).toString('hex');
 }
 
-const DB_FILE = process.env.DB_FILE || path.join(__dirname, 'data', 'orders.db');
-const db = openDb(DB_FILE);
+const DATABASE_URL = process.env.DATABASE_URL;
+if (!DATABASE_URL) {
+  console.error('❌ لازم تحط DATABASE_URL (رابط داتابيس Supabase) في ملف .env أو في إعدادات الاستضافة.');
+  process.exit(1);
+}
+const db = openDb(DATABASE_URL);
 
 const app = createApp({
   db,
@@ -37,14 +41,24 @@ const app = createApp({
   secureCookies: IS_PROD,
 });
 
-const server = app.listen(PORT, () => {
-  console.log(`✅ الموقع شغال: http://localhost:${PORT}`);
-  console.log(`   لوحة التحكم: http://localhost:${PORT}/admin`);
-  console.log(`   قاعدة البيانات: ${DB_FILE}`);
-});
+let server;
+db.init()
+  .then(() => {
+    server = app.listen(PORT, () => {
+      console.log(`✅ الموقع شغال: http://localhost:${PORT}`);
+      console.log(`   لوحة التحكم: http://localhost:${PORT}/admin`);
+      console.log('   قاعدة البيانات: Supabase (متصل)');
+    });
+  })
+  .catch((err) => {
+    console.error('❌ مش قادر يتصل بـ Supabase. اتأكد من DATABASE_URL والباسورد.');
+    console.error('   ' + err.message);
+    process.exit(1);
+  });
 
 function shutdown() {
-  server.close(() => { db.close(); process.exit(0); });
+  const done = () => db.close().finally(() => process.exit(0));
+  if (server) server.close(done); else done();
 }
 process.on('SIGTERM', shutdown);
 process.on('SIGINT', shutdown);

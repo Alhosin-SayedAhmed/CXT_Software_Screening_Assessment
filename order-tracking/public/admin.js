@@ -242,6 +242,14 @@
     }
   });
 
+  // ---------- تحديث تلقائي ----------
+  // لو حد عدّل في Supabase مباشرة، القائمة بتتحدّث لوحدها كل 30 ثانية
+  setInterval(() => {
+    const busy = document.hidden || dlg.open || $('dashView').classList.contains('hidden') ||
+      (document.activeElement && document.activeElement.closest('#rows'));
+    if (!busy) load();
+  }, 30000);
+
   // ---------- البداية ----------
   Promise.all([fetch('/api/config').then((r) => r.json()), api('/api/admin/me')]).then(([cfg, me]) => {
     STAGES = cfg.stages || [];

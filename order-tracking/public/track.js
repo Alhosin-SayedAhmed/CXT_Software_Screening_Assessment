@@ -6,6 +6,8 @@
   const errBox = $('trackError');
   const result = $('result');
   let STAGES = [];
+  let shown = null; // الطلب اللي معروض دلوقتي
+  const REFRESH_MS = 20000;
 
   const fmt = (iso) =>
     new Date(iso).toLocaleString('ar-EG', { dateStyle: 'medium', timeStyle: 'short' });
@@ -56,13 +58,15 @@
   }
 
   function showError(msg) {
+    shown = null;
     errBox.textContent = msg;
     errBox.classList.remove('hidden');
     result.classList.add('hidden');
   }
 
   // ---------- عرض النتيجة ----------
-  function render(o) {
+  function render(o, { scroll = true } = {}) {
+    shown = { number: o.order_number, updated_at: o.updated_at };
     errBox.classList.add('hidden');
     const total = STAGES.length;
     const idx = Math.max(0, STAGES.findIndex((s) => s.key === o.stage));
@@ -80,7 +84,7 @@
     $('rStage').textContent = cur ? cur.label : o.stage;
     $('rStep').textContent = isLast ? 'خلصت كل المراحل 🎉' : `المرحلة ${arNum(idx + 1)} من ${arNum(total)}`;
     $('rProduct').textContent = o.product ? 'المنتج: ' + o.product : '';
-    $('rUpdated').textContent = 'آخر تحديث: ' + fmt(o.updated_at);
+    $('rUpdated').textContent = 'آخر تحديث: ' + fmt(o.updated_at) + ' · الصفحة بتتحدّث لوحدها';
 
     const iconBox = $('rIcon');
     iconBox.className = 'hero-icon anim-' + iconOf(cur);
@@ -140,8 +144,23 @@
       ring.style.transition = '';
       ring.style.strokeDashoffset = String(276.46 * (1 - pct));
     }));
-    result.scrollIntoView({ behavior: 'smooth', block: 'nearest' });
+    if (scroll) result.scrollIntoView({ behavior: 'smooth', block: 'nearest' });
   }
+
+  // بيشيّك على Supabase كل شوية، ولو الطلب اتغيّر بيعرض التحديث بالحركة
+  async function refresh() {
+    if (!shown || document.hidden) return;
+    try {
+      const res = await fetch('/api/track/' + encodeURIComponent(shown.number));
+      if (!res.ok) return;
+      const data = await res.json();
+      if (shown && data.order_number === shown.number && data.updated_at !== shown.updated_at) {
+        render(data, { scroll: false });
+      }
+    } catch { /* مفيش نت دلوقتي — هنجرب المرة الجاية */ }
+  }
+  setInterval(refresh, REFRESH_MS);
+  document.addEventListener('visibilitychange', refresh);
 
   async function track(number) {
     number = String(number || '').trim().replace(/^#/, '');

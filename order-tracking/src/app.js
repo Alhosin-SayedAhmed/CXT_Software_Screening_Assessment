@@ -38,9 +38,12 @@ function createApp({ db, adminPassword, sessionSecret, webhookSecret = '', store
     res.json({ stages: STAGES, storeName, storeUrl });
   });
 
+  // ماتخزّنش ردود الـ API، عشان أي تحديث في Supabase يظهر علطول
+  app.use('/api', (req, res, next) => { res.setHeader('Cache-Control', 'no-store'); next(); });
+
   // العميل بيشوف حالة الطلب بس — من غير اسم أو تليفون عشان الخصوصية
-  app.get('/api/track/:number', (req, res) => {
-    const order = db.getByNumber(normalizeOrderNumber(req.params.number));
+  app.get('/api/track/:number', ah(async (req, res) => {
+    const order = await db.getByNumber(normalizeOrderNumber(req.params.number));
     if (!order) return res.status(404).json({ error: 'رقم الطلب ده مش موجود. اتأكد من الرقم وجرب تاني.' });
     res.json({
       order_number: order.order_number,
@@ -50,7 +53,7 @@ function createApp({ db, adminPassword, sessionSecret, webhookSecret = '', store
       updated_at: order.updated_at,
       history: order.history,
     });
-  });
+  }));
 
   // ---------- الأدمن ----------
   app.post('/api/admin/login', (req, res) => {
@@ -77,25 +80,25 @@ function createApp({ db, adminPassword, sessionSecret, webhookSecret = '', store
   const admin = express.Router();
   admin.use(auth.requireAdmin);
 
-  admin.get('/orders', (req, res) => {
+  admin.get('/orders', ah(async (req, res) => {
     const search = cleanText(req.query.search, 100) || '';
     const stage = isValidStage(req.query.stage) ? req.query.stage : '';
-    res.json({ orders: db.list({ search, stage }), counts: db.counts() });
-  });
+    const [orders, counts] = await Promise.all([db.list({ search, stage }), db.counts()]);
+    res.json({ orders, counts });
+  }));
 
-  admin.get('/orders/:id', (req, res) => {
-    const order = db.getById(Number(req.params.id));
+  admin.get('/orders/:id', ah(async (req, res) => {
+    const order = await db.getById(Number(req.params.id));
     if (!order) return res.status(404).json({ error: 'الطلب مش موجود' });
     res.json(order);
-  });
+  }));
 
-  admin.post('/orders', (req, res) => {
+  admin.post('/orders', ah(async (req, res) => {
     const b = req.body || {};
     const order_number = normalizeOrderNumber(b.order_number);
     if (!order_number) return res.status(400).json({ error: 'لازم تكتب رقم الطلب' });
     if (b.stage !== undefined && !isValidStage(b.stage)) return res.status(400).json({ error: 'مرحلة غير صحيحة' });
-    if (db.getByNumber(order_number)) return res.status(409).json({ error: 'رقم الطلب ده متسجل قبل كده' });
-    const order = db.createOrder({
+    const order = await db.createOrder({
       order_number,
       customer_name: cleanText(b.customer_name, 100),
       phone: cleanText(b.phone, 30),
@@ -103,13 +106,14 @@ function createApp({ db, adminPassword, sessionSecret, webhookSecret = '', store
       note: cleanText(b.note, 500),
       stage: b.stage,
     });
+    if (!order) return res.status(409).json({ error: 'رقم الطلب ده متسجل قبل كده' });
     res.status(201).json(order);
-  });
+  }));
 
-  admin.patch('/orders/:id', (req, res) => {
+  admin.patch('/orders/:id', ah(async (req, res) => {
     const b = req.body || {};
     if (b.stage !== undefined && !isValidStage(b.stage)) return res.status(400).json({ error: 'مرحلة غير صحيحة' });
-    const order = db.updateOrder(Number(req.params.id), {
+    const order = await db.updateOrder(Number(req.params.id), {
       customer_name: cleanText(b.customer_name, 100),
       phone: cleanText(b.phone, 30),
       product: cleanText(b.product, 200),
@@ -118,12 +122,12 @@ function createApp({ db, adminPassword, sessionSecret, webhookSecret = '', store
     });
     if (!order) return res.status(404).json({ error: 'الطلب مش موجود' });
     res.json(order);
-  });
+  }));
 
-  admin.delete('/orders/:id', (req, res) => {
-    if (!db.deleteOrder(Number(req.params.id))) return res.status(404).json({ error: 'الطلب مش موجود' });
+  admin.delete('/orders/:id', ah(async (req, res) => {
+    if (!(await db.deleteOrder(Number(req.params.id)))) return res.status(404).json({ error: 'الطلب مش موجود' });
     res.json({ ok: true });
-  });
+  }));
 
   app.use('/api/admin', admin);
 
@@ -131,7 +135,7 @@ function createApp({ db, adminPassword, sessionSecret, webhookSecret = '', store
   // بيشتغل بس لو حطيت WEBHOOK_SECRET. الرابط اللي تحطه في EasyOrders:
   //   https://track.yourdomain.com/api/webhook/easyorders?key=WEBHOOK_SECRET
   // شكل البيانات اللي EasyOrders بتبعتها لازم يتجرب الأول (شوف README).
-  app.post('/api/webhook/easyorders', (req, res) => {
+  app.post('/api/webhook/easyorders', ah(async (req, res) => {
     if (!webhookSecret) return res.status(404).json({ error: 'not enabled' });
     const key = String(req.query.key || req.get('x-webhook-key') || '');
     if (key.length === 0 || !timingEqual(key, webhookSecret)) {
@@ -144,21 +148,21 @@ function createApp({ db, adminPassword, sessionSecret, webhookSecret = '', store
     );
     console.log('[webhook] received keys:', Object.keys(src).join(', '), '→ order:', order_number || '(none)');
     if (!order_number) return res.status(400).json({ error: 'could not find order number in payload' });
-    if (db.getByNumber(order_number)) return res.json({ ok: true, existed: true });
 
     const items = Array.isArray(src.cart_items) ? src.cart_items : Array.isArray(src.items) ? src.items : [];
     const product = items
       .map((it) => (it && (it.product?.name || it.name || it.title)) || '')
       .filter(Boolean)
       .join('، ');
-    db.createOrder({
+    const created = await db.createOrder({
       order_number,
       customer_name: cleanText(src.full_name ?? src.customer_name ?? src.name, 100),
       phone: cleanText(src.phone ?? src.customer_phone, 30),
       product: cleanText(product, 200),
     });
+    if (!created) return res.json({ ok: true, existed: true });
     res.status(201).json({ ok: true, created: true });
-  });
+  }));
 
   // ---------- الصفحات ----------
   const pub = path.join(__dirname, '..', 'public');
@@ -175,6 +179,11 @@ function createApp({ db, adminPassword, sessionSecret, webhookSecret = '', store
   });
 
   return app;
+}
+
+// Express 4 مش بيمسك أخطاء الدوال الـ async لوحده
+function ah(fn) {
+  return (req, res, next) => Promise.resolve(fn(req, res, next)).catch(next);
 }
 
 function timingEqual(a, b) {
