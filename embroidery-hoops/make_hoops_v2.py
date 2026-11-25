@@ -36,7 +36,8 @@ PLATE_T     = 4.0      # petal thickness
 FILLET      = 1.2
 BED_CHAMFER = 0.8
 TEX_H       = 0.4      # raised decoration height (front)
-BACK_DEPTH  = 0.6      # engraved decoration depth on the bed side (style "bedside")
+BACK_DEPTH  = 0.6      # bed side: background recessed by this -> decoration stands out 0.6 mm (style "bedside")
+MAX_BRIDGE  = 8.0      # longest allowed bridge over the recessed background on the bed face (mm)
 BACK_BEVEL  = 0.8      # 45 deg bevel on the bed-side petal edge (no support needed)
 TEXTURE     = "motifs" # "motifs" = few large shapes (slicer-friendly), "leaves" = dense leaves, None = smooth
 HANG_HOLE_D = 4.0
@@ -224,11 +225,29 @@ def frame(D, style):
         pf, rf = tex(D, r_in=Rb + RING_CHAMF)          # front rim face starts at the wide bore entry
         body = body + Manifold.extrude(to_cs(pf), TEX_H + 0.05).translate([0, 0, z1 - 0.05])
         body = body + Manifold.extrude(to_cs(rf), TEX_H + 0.05).translate([0, 0, H - 0.05])
-        if style == "bedside":                                          # same decoration engraved into the flat bed face
+        if style == "bedside":
+            # RAISED decoration on the bed face without supports: the motifs and a border around the petals,
+            # the rim and the bore stay on the bed; only the background between them is recessed, so the
+            # printer just bridges short gaps between the raised shapes.
             pb, rb = tex(D + 7, r_in=Ri)                # back rim face starts at the lip
-            pb = pb.difference(Point(0, Rc).buffer(HANG_HOLE_D / 2 + 1.2, 24))
-            body = body - Manifold.extrude(to_cs(pb), BACK_DEPTH + 0.5).translate([0, 0, -0.5])
-            body = body - Manifold.extrude(to_cs(rb), BACK_DEPTH + 0.5).translate([0, 0, -0.5])
+            back_rim_face = Point(0, 0).buffer(Ro - e, 128).difference(Point(0, 0).buffer(Ri + e, 128))
+            bg = unary_union([plate_face.difference(pb), back_rim_face.difference(rb)])
+            # add small raised dots where the background is widest, so no bridge is longer than MAX_BRIDGE
+            from shapely.ops import polylabel
+            for _ in range(200):
+                worst, at = 0.0, None
+                for g in getattr(bg, "geoms", [bg]):
+                    if g.area < 1.0: continue
+                    pt = polylabel(g, 0.05)
+                    d = min([g.exterior.distance(pt)] + [h.distance(pt) for h in g.interiors])
+                    if d > worst: worst, at = d, pt
+                if at is None or 2 * worst <= MAX_BRIDGE: break
+                for k in (1, -1):                       # keep the back symmetric left/right
+                    bg = bg.difference(Point(k * at.x, at.y).buffer(1.0, 12))
+            bg = bg.buffer(-0.05, 4).buffer(0.05, 4)
+            bg = unary_union([g for g in getattr(bg, "geoms", [bg]) if g.area > 1.0])
+            body = body - Manifold.extrude(to_cs(bg), BACK_DEPTH + 0.5).translate([0, 0, -0.5])
+            frame.back_background = bg                  # kept for the bridge-span check
         if style == "double":                                           # same decoration, engraved on the back
             pb, rb = tex(D + 7)
             body = body - Manifold.extrude(to_cs(pb), TEX_H + 0.5).translate([0, 0, z0 - 0.5])
