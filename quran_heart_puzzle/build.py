@@ -27,11 +27,11 @@ HERE = os.path.dirname(os.path.abspath(__file__))
 # ---------------------------------------------------------------- CONFIG
 HEART_MAX_SIZE = 238.0   # mm, longest side of the heart drawing (board adds rim + hanger lugs)
 BASE_H         = 0.8     # mm, base plate thickness
-WALL_H         = 2.0     # mm, wall height above the base (= pocket depth)
+WALL_H         = 1.6     # mm, wall height above the base (= pocket depth)
 WALL_T         = 1.6     # mm, thickness of the walls between pockets
 RIM_T          = 3.0     # mm, thickness of the outer rim of the heart
 CLEARANCE      = 0.20    # mm, gap per side between piece and pocket
-PIECE_H        = 2.0     # mm, piece body thickness (flush with the walls)
+PIECE_H        = 1.6     # mm, piece body thickness (flush with the walls)
 TEXT_H         = 1.0     # mm, raised name height
 TEXT_MARGIN    = 0.8     # mm, keep text this far from the piece edge
 TEXT_MAX_EM    = 10.0    # mm, largest font size used
@@ -46,14 +46,15 @@ RECESS_DEPTH   = 1.2     # mm, hollow depth under the piece (> FLOOR_TEXT_H)
 LOCK_STYLE     = os.environ.get('LOCK_STYLE', 'peg')    # 'peg' (current) or 'name' (older version)
 PEG_FLOOR_NAME_H = 0.2   # mm, floor name height (one layer)
 PEG_FLOOR_NAME_SCALE = 0.8  # floor name drawn a bit smaller than the piece name, leaving room for the post
-PEG_DIAMETERS  = (3.0, 2.5, 2.0)  # mm, largest post that fits clear of the name is used
-PEG_H          = 0.6     # mm, post height above the floor (three layers)
+PEG_DIAMETERS  = (3.5, 3.0, 2.5, 2.0)  # mm, largest post that fits clear of the name is used
+PEG_H          = 1.0     # mm, post height above the floor (five layers)
 PEG_NAME_GAP   = 1.0     # mm, minimum gap between the post and the name
-PEG_HOLE_EXTRA = 0.4     # mm, hole diameter under the piece = post diameter + this
-PEG_HOLE_DEPTH = 0.8     # mm, hole depth (four layers)
+PEG_HOLE_EXTRA = 0.1     # mm, hole diameter under the piece = post diameter + this (tight clip)
+PEG_HOLE_DEPTH = 1.2     # mm, hole depth (six layers), a bit deeper than the post
 NAME_RECESS_MARGIN = 0.8 # mm, plain rectangular recess under the piece = the floor name's box + this
 NAME_RECESS_DEPTH = 0.4  # mm, recess depth (two layers); the name never touches it
-RIB_R          = 0.35    # mm, crush rib radius (sticks into the 0.2 mm gap -> 0.15 mm squeeze)
+RIB_R          = 0.5     # mm, rib radius on the pocket wall (sticks 0.3 mm past the 0.2 mm gap)
+RIB_SEAT_R     = 0.45    # mm, matching notch in the piece edge (0.05 mm squeeze on each rib)
 RIB_SPACING    = 14.0    # mm along the pocket wall between ribs
 RIB_MIN        = 3       # at least this many ribs per pocket
 # hanger: separate banner part that plugs into two lugs on top of the heart
@@ -75,8 +76,8 @@ KNOB_CLEAR     = 0.15    # mm gap per side in the jigsaw joint
 # the hanger lies level with the heart (original look). Its jigsaw knobs are slightly
 # tapered: a hair smaller than the socket at the front, a hair bigger at the back. Pushed in
 # from behind, each knob wedges tight in its socket and cannot pass through to the front.
-KNOB_FRONT_GAP = 0.10    # mm per side the knob is smaller than the socket at the front face
-KNOB_BACK_GRIP = 0.08    # mm per side the knob is bigger than the socket at the back face
+KNOB_FRONT_GAP = 0.05    # mm per side the knob is smaller than the socket at the front face
+KNOB_BACK_GRIP = 0.15    # mm per side the knob is bigger than the socket at the back face
 KNOB_STEPS     = 14      # taper steps through the thickness (one per 0.2 mm layer)
 PLATE          = 250.0   # mm usable square on the A1 plate
 PLATE_GAP      = 3.0     # mm between pieces on a plate
@@ -465,6 +466,9 @@ def main():
                 x, y, d = peg
                 r = (d + PEG_HOLE_EXTRA) / 2
                 solid = solid - m3d.Manifold.cylinder(PEG_HOLE_DEPTH + 1, r, r, 48).translate([x, y, -1])
+            # seats for the wall ribs: small notches in the piece edge
+            seats = unary_union([Point(p.x, p.y).buffer(RIB_SEAT_R, 24) for p in locks[key][2]])
+            solid = solid - extrude(seats, -1, PIECE_H + TEXT_H + 2)
         elif txt is not None and not txt.is_empty:
             hollow = txt.buffer(NAME_CLEAR, join_style=1, quad_segs=3).simplify(0.01).intersection(body.buffer(-0.4))
             solid = solid - extrude(hollow, -1, RECESS_DEPTH + 1)
