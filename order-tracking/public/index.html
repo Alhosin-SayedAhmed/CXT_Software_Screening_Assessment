@@ -28,19 +28,26 @@
       <div class="error hidden" id="trackError" role="alert"></div>
     </form>
 
-    <section class="card hidden" id="result" aria-live="polite">
-      <div class="order-head">
-        <div>
-          <div class="meta">رقم الطلب</div>
-          <div class="order-no" id="rNumber"></div>
+    <section class="card result hidden" id="result" aria-live="polite">
+      <div class="hero" id="rHero">
+        <div class="ring-wrap" aria-hidden="true">
+          <svg class="ring" viewBox="0 0 100 100">
+            <circle class="ring-track" cx="50" cy="50" r="44"></circle>
+            <circle class="ring-fill" id="rRing" cx="50" cy="50" r="44"></circle>
+          </svg>
+          <div class="hero-icon" id="rIcon"></div>
+          <div class="burst" id="rBurst"></div>
+        </div>
+        <div class="hero-text">
+          <div class="meta">طلب رقم <span class="order-no" id="rNumber"></span></div>
+          <div class="hero-stage" id="rStage"></div>
+          <div class="hero-step" id="rStep"></div>
           <div class="meta" id="rProduct"></div>
         </div>
-        <span class="pill" id="rStage"></span>
       </div>
-      <div class="progress" aria-hidden="true"><span id="rBar"></span></div>
-      <div class="meta" id="rUpdated"></div>
       <ol class="timeline" id="rTimeline"></ol>
       <div class="note hidden" id="rNote"></div>
+      <div class="meta updated" id="rUpdated"></div>
     </section>
 
     <footer class="foot" id="foot"></footer>

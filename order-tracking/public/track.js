@@ -9,6 +9,51 @@
 
   const fmt = (iso) =>
     new Date(iso).toLocaleString('ar-EG', { dateStyle: 'medium', timeStyle: 'short' });
+  const arNum = (n) => Number(n).toLocaleString('ar-EG');
+
+  // ---------- الأيقونات (SVG) ----------
+  const SVG_NS = 'http://www.w3.org/2000/svg';
+  const ICONS = {
+    clipboard: [['rect', { x: 5, y: 4, width: 14, height: 17, rx: 2 }], ['path', { d: 'M9 4V3h6v1' }], ['path', { d: 'M8.5 13l2.5 2.5 4.5-5' }]],
+    box: [['path', { d: 'M3 7.5l9-4.5 9 4.5-9 4.5z' }], ['path', { d: 'M3 7.5V17l9 4.5 9-4.5V7.5' }], ['path', { d: 'M12 12v9.5' }]],
+    gear: [
+      ['circle', { cx: 12, cy: 12, r: 3 }],
+      ['circle', { cx: 12, cy: 12, r: 6.5 }],
+      ...Array.from({ length: 8 }, (_, i) => {
+        const a = (i * Math.PI) / 4;
+        const p = (r) => `${(12 + r * Math.cos(a)).toFixed(2)} ${(12 + r * Math.sin(a)).toFixed(2)}`;
+        return ['path', { d: `M${p(6.5)}L${p(9.5)}`, 'stroke-width': 2.6 }];
+      }),
+    ],
+    shield: [['path', { d: 'M12 3l7.5 3v5.5c0 4.5-3.2 8.2-7.5 9.5-4.3-1.3-7.5-5-7.5-9.5V6z' }], ['path', { d: 'M8.8 12.2l2.2 2.2 4.2-4.4' }]],
+    package: [['rect', { x: 3.5, y: 8, width: 17, height: 12.5, rx: 1.5 }], ['path', { d: 'M2.5 4.5h19V8h-19z' }], ['path', { d: 'M10 12h4' }]],
+    truck: [['path', { d: 'M10 6h11.5v10.5H10z' }], ['path', { d: 'M10 9.5H6.2L3 13v3.5h7' }], ['circle', { cx: 6.5, cy: 17.5, r: 1.8 }], ['circle', { cx: 17.5, cy: 17.5, r: 1.8 }]],
+    home: [['path', { d: 'M3.5 11L12 3.8l8.5 7.2V20a1 1 0 0 1-1 1h-15a1 1 0 0 1-1-1z' }], ['path', { d: 'M9 14.5l2.2 2.2 4-4.2' }]],
+    check: [['path', { d: 'M5.5 12.5l4.5 4.5 8.5-9.5', 'stroke-width': 2.6 }]],
+    dot: [['circle', { cx: 12, cy: 12, r: 4 }]],
+  };
+
+  function icon(name) {
+    const svg = document.createElementNS(SVG_NS, 'svg');
+    svg.setAttribute('viewBox', '0 0 24 24');
+    svg.setAttribute('class', 'ico');
+    svg.setAttribute('aria-hidden', 'true');
+    for (const [tag, attrs] of ICONS[name] || ICONS.dot) {
+      const el = document.createElementNS(SVG_NS, tag);
+      for (const [k, v] of Object.entries(attrs)) el.setAttribute(k, v);
+      svg.append(el);
+    }
+    return svg;
+  }
+
+  const iconOf = (stage) => (stage && ICONS[stage.icon] ? stage.icon : 'dot');
+
+  function el(tag, cls, text) {
+    const e = document.createElement(tag);
+    if (cls) e.className = cls;
+    if (text !== undefined) e.textContent = text;
+    return e;
+  }
 
   function showError(msg) {
     errBox.textContent = msg;
@@ -16,41 +61,70 @@
     result.classList.add('hidden');
   }
 
+  // ---------- عرض النتيجة ----------
   function render(o) {
     errBox.classList.add('hidden');
-    const idx = STAGES.findIndex((s) => s.key === o.stage);
+    const total = STAGES.length;
+    const idx = Math.max(0, STAGES.findIndex((s) => s.key === o.stage));
+    const cur = STAGES[idx];
+    const isLast = idx === total - 1;
     const whenByStage = {};
     for (const h of o.history || []) whenByStage[h.stage] = h.changed_at;
 
-    $('rNumber').textContent = '#' + o.order_number;
-    $('rProduct').textContent = o.product ? 'المنتج: ' + o.product : '';
-    $('rStage').textContent = STAGES[idx] ? STAGES[idx].label : o.stage;
-    $('rUpdated').textContent = 'آخر تحديث: ' + fmt(o.updated_at);
-    const pct = STAGES.length > 1 ? Math.round((idx / (STAGES.length - 1)) * 100) : 100;
-    requestAnimationFrame(() => { $('rBar').style.width = Math.max(pct, 4) + '%'; });
+    // نشيل النتيجة القديمة ونرجعها عشان الحركة تتعاد من الأول
+    result.classList.add('hidden');
+    void result.offsetWidth;
 
+    // البطاقة العلوية
+    $('rNumber').textContent = '#' + o.order_number;
+    $('rStage').textContent = cur ? cur.label : o.stage;
+    $('rStep').textContent = isLast ? 'خلصت كل المراحل 🎉' : `المرحلة ${arNum(idx + 1)} من ${arNum(total)}`;
+    $('rProduct').textContent = o.product ? 'المنتج: ' + o.product : '';
+    $('rUpdated').textContent = 'آخر تحديث: ' + fmt(o.updated_at);
+
+    const iconBox = $('rIcon');
+    iconBox.className = 'hero-icon anim-' + iconOf(cur);
+    iconBox.replaceChildren(icon(iconOf(cur)));
+
+    const ring = $('rRing');
+    ring.style.transition = 'none';
+    ring.style.strokeDashoffset = '276.46';
+
+    const burst = $('rBurst');
+    burst.replaceChildren();
+    if (isLast) {
+      const colors = ['var(--brand)', '#f59e0b', '#ec4899', '#6366f1', '#22c55e'];
+      for (let i = 0; i < 14; i++) {
+        const p = document.createElement('i');
+        p.style.setProperty('--a', (i * 360) / 14 + 'deg');
+        p.style.setProperty('--c', colors[i % colors.length]);
+        p.style.setProperty('--d', 0.9 + (i % 3) * 0.08 + 's');
+        burst.append(p);
+      }
+    }
+
+    // الخط الزمني
     const list = $('rTimeline');
     list.replaceChildren();
     STAGES.forEach((s, i) => {
-      const li = document.createElement('li');
-      if (i <= idx) li.classList.add('done');
-      if (i === idx) { li.classList.add('current'); li.setAttribute('aria-current', 'step'); }
-      const dot = document.createElement('span');
-      dot.className = 'dot';
-      dot.textContent = i <= idx ? '✓' : String(i + 1);
-      const title = document.createElement('div');
-      title.className = 'step-title';
-      title.textContent = s.label;
-      const desc = document.createElement('div');
-      desc.className = 'step-desc';
-      desc.textContent = s.description || '';
-      li.append(dot, title, desc);
-      if (i <= idx && whenByStage[s.key]) {
-        const t = document.createElement('div');
-        t.className = 'step-time';
-        t.textContent = fmt(whenByStage[s.key]);
-        li.append(t);
-      }
+      const state = i < idx || (isLast && i === idx) ? 'done' : i === idx ? 'current' : 'pending';
+      const li = el('li', 'step ' + state);
+      li.style.setProperty('--i', i);
+      if (i === idx) li.setAttribute('aria-current', 'step');
+
+      const node = el('span', 'node' + (state === 'current' ? ' anim-' + iconOf(s) : ''));
+      node.append(icon(state === 'done' ? 'check' : iconOf(s)));
+      const line = el('span', 'line');
+      line.append(el('span', 'line-fill'));
+
+      const body = el('div', 'step-body');
+      const title = el('div', 'step-title', s.label);
+      if (i === idx && !isLast) title.append(el('span', 'now-tag', 'دلوقتي'));
+      body.append(title);
+      if (s.description) body.append(el('div', 'step-desc', s.description));
+      if (i <= idx && whenByStage[s.key]) body.append(el('div', 'step-time', fmt(whenByStage[s.key])));
+
+      li.append(node, line, body);
       list.append(li);
     });
 
@@ -59,6 +133,14 @@
     else note.classList.add('hidden');
 
     result.classList.remove('hidden');
+
+    // تعبئة الدايرة بعد ما الكارت يظهر
+    const pct = total ? (idx + 1) / total : 1;
+    requestAnimationFrame(() => requestAnimationFrame(() => {
+      ring.style.transition = '';
+      ring.style.strokeDashoffset = String(276.46 * (1 - pct));
+    }));
+    result.scrollIntoView({ behavior: 'smooth', block: 'nearest' });
   }
 
   async function track(number) {

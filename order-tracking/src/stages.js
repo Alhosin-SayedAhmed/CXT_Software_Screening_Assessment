@@ -3,14 +3,15 @@
 // key: اسم ثابت بالإنجليزي (ماتغيّروش بعد ما يبقى عندك طلبات)
 // label: اللي العميل بيشوفه
 // description: سطر توضيحي تحت المرحلة
+// icon: شكل الأيقونة المتحركة. المتاح: clipboard, box, gear, shield, package, truck, home, check
 const STAGES = [
-  { key: 'received', label: 'تم استلام الطلب', description: 'وصلنا طلبك وتم تأكيده' },
-  { key: 'preparing', label: 'جاري التجهيز', description: 'بنجهز الخامات والمكونات' },
-  { key: 'manufacturing', label: 'جاري التصنيع', description: 'طلبك على خط التصنيع دلوقتي' },
-  { key: 'quality', label: 'فحص الجودة', description: 'بنختبر المنتج قبل التغليف' },
-  { key: 'completed', label: 'تم الانتهاء', description: 'المنتج جاهز ومتغلف' },
-  { key: 'shipping', label: 'جاري الشحن', description: 'الطلب مع شركة الشحن' },
-  { key: 'delivered', label: 'تم التوصيل', description: 'وصل الطلب للعميل' },
+  { key: 'received', icon: 'clipboard', label: 'تم استلام الطلب', description: 'وصلنا طلبك وتم تأكيده' },
+  { key: 'preparing', icon: 'box', label: 'جاري التجهيز', description: 'بنجهز الخامات والمكونات' },
+  { key: 'manufacturing', icon: 'gear', label: 'جاري التصنيع', description: 'طلبك على خط التصنيع دلوقتي' },
+  { key: 'quality', icon: 'shield', label: 'فحص الجودة', description: 'بنختبر المنتج قبل التغليف' },
+  { key: 'completed', icon: 'package', label: 'تم الانتهاء', description: 'المنتج جاهز ومتغلف' },
+  { key: 'shipping', icon: 'truck', label: 'جاري الشحن', description: 'الطلب مع شركة الشحن' },
+  { key: 'delivered', icon: 'home', label: 'تم التوصيل', description: 'وصل الطلب للعميل' },
 ];
 
 const STAGE_KEYS = STAGES.map((s) => s.key);
