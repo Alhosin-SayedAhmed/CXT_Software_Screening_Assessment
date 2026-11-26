@@ -59,7 +59,7 @@ def crescent(cx, cy, R, span, thick, direction):
 
 
 def main():
-    outline = shape(json.load(open(os.path.join(HERE, 'preview.json')))['outline'])
+    outline = shape(json.load(open(os.path.join(os.environ.get('STAND_SRC', HERE), 'preview.json')))['outline'])
     y0 = outline.bounds[1]
     outline = affinity.translate(outline, 0, -y0)            # heart's bottom tip at y = 0
     hx = outline.centroid.x

@@ -25,7 +25,7 @@ from fontTools.pens.basePen import BasePen
 HERE = os.path.dirname(os.path.abspath(__file__))
 
 # ---------------------------------------------------------------- CONFIG
-HEART_MAX_SIZE = 246.0   # mm, longest side of the heart drawing (original size; prints diagonally with the hanger lugs)
+HEART_MAX_SIZE = float(os.environ.get('HEART_MAX_SIZE', 246.0))   # mm, longest side of the heart drawing (246 = original size)
 BASE_H         = 0.8     # mm, base plate thickness
 WALL_H         = 2.0     # mm, wall height above the base (= pocket depth)
 WALL_T         = 1.6     # mm, thickness of the walls between pockets
@@ -452,7 +452,14 @@ def main():
             best = (m_, float(ang))
     bb0 = board_outline.bounds
     print_ang = 0.0 if max(bb0[2] - bb0[0], bb0[3] - bb0[1]) <= 250 else best[1]
-    to_trimesh(board.rotate([0, 0, print_ang])).export(os.path.join(out, 'board.stl'))
+    # some angles leave a few float32 rounding defects in the STL; nudge the angle until it is clean
+    for dang in (0, 0.1, -0.1, 0.2, -0.2, 0.3, -0.3, 0.5, -0.5):
+        fn = os.path.join(out, 'board.stl')
+        to_trimesh(board.rotate([0, 0, print_ang + dang])).export(fn)
+        chk = trimesh.load(fn)
+        if (np.unique(chk.edges_sorted, axis=0, return_counts=True)[1] != 2).sum() == 0:
+            print_ang += dang
+            break
     print(f'  board.stl written (turned {print_ang:.1f} deg on the plate, footprint {best[0]:.0f} mm)')
 
     # ---- hanger banner
