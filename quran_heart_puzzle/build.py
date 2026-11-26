@@ -44,7 +44,7 @@ RECESS_DEPTH   = 1.2     # mm, hollow depth under the piece (> FLOOR_TEXT_H)
 # LOCK_STYLE 'peg': the pocket floor name is only a low guide, a round post (placed clear
 # of the name) locates the piece, and crush ribs on the pocket walls hold it by pressure.
 LOCK_STYLE     = os.environ.get('LOCK_STYLE', 'peg')    # 'peg' (current) or 'name' (older version)
-PEG_FLOOR_NAME_H = 0.2   # mm, floor name height (one layer)
+PEG_FLOOR_NAME_H = 0.6   # mm, floor name height (three layers)
 PEG_FLOOR_NAME_SCALE = 0.8  # floor name drawn a bit smaller than the piece name, leaving room for the post
 PEG_DIAMETERS  = (3.5, 3.0, 2.5, 2.0)  # mm, largest post that fits clear of the name is used
 PEG_H          = 1.0     # mm, post height above the floor (five layers)
@@ -52,7 +52,7 @@ PEG_NAME_GAP   = 1.0     # mm, minimum gap between the post and the name
 PEG_HOLE_EXTRA = 0.1     # mm, hole diameter under the piece = post diameter + this (tight clip)
 PEG_HOLE_DEPTH = 1.2     # mm, hole depth (six layers), a bit deeper than the post
 NAME_RECESS_MARGIN = 0.8 # mm, plain rectangular recess under the piece = the floor name's box + this
-NAME_RECESS_DEPTH = 0.4  # mm, recess depth (two layers); the name never touches it
+NAME_RECESS_DEPTH = 0.8  # mm, recess depth (four layers); the 0.6 mm name never touches it
 RIB_R          = 0.5     # mm, rib radius on the pocket wall (sticks 0.3 mm past the 0.2 mm gap)
 RIB_SEAT_R     = 0.45    # mm, matching notch in the piece edge (0.05 mm squeeze on each rib)
 RIB_SPACING    = 14.0    # mm along the pocket wall between ribs
