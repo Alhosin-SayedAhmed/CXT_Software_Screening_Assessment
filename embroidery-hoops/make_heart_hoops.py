@@ -34,6 +34,10 @@ BACK_BEVEL   = 0.8
 MAX_BRIDGE   = 8.0
 RING_CHAMF   = 0.6
 HANG_HOLE_D  = 4.0
+OUTLINE      = "heart"  # "heart" = plain heart-shaped outer frame, "scallop" = scalloped heart
+BAND         = 14.0     # plain heart: even border width beyond the rim
+TIP_SHARP    = 1.9      #   how far the bottom point reaches (x BAND below the rim's bottom)
+OUT_TIP_R    = 3.0      #   rounding of the outer heart's point
 SCALLOP_STEP = 25.7     # mm between scallop centres (same rhythm as the 12-petal flower at 60 mm)
 DIP_R        = 9.0      # rounding of the heart's top dip (must exceed the largest outward sweep offset)
 TIP_R        = 6.0      # rounding of the bottom tip (must exceed the ring wall)
@@ -67,17 +71,21 @@ def normals(P):
         Nn = (np.roll(Nn, 1, 0) + 2 * Nn + np.roll(Nn, -1, 0)); Nn /= np.linalg.norm(Nn, axis=1)[:, None]
     return Nn
 
-def heart_curve(width):
-    """Smooth heart, outer width = width, centred on its bounding box, CCW, resampled from the top centre."""
+def heart_curve(width, height=None, dip_r=None, tip_r=None):
+    """Smooth heart (width x height), centred on its bounding box, CCW, resampled from the top centre."""
+    dip_r = DIP_R if dip_r is None else dip_r
+    tip_r = TIP_R if tip_r is None else tip_r
     t = np.linspace(0, 2 * math.pi, 4000, endpoint=False)
     x = 16 * np.sin(t) ** 3
     y = 13 * np.cos(t) - 5 * np.cos(2 * t) - 2 * np.cos(3 * t) - np.cos(4 * t)
     p = Polygon(np.c_[x, y]).buffer(0)
     for _ in range(2):                        # scale, round dip + tip, rescale to the exact width
         minx, miny, maxx, maxy = p.bounds
-        p = sscale(p, width / (maxx - minx), width / (maxx - minx), origin=(0, 0))
-        p = p.buffer(DIP_R, 64).buffer(-DIP_R, 64)        # closing: rounds the concave dip
-        p = p.buffer(-TIP_R, 64).buffer(TIP_R, 64)        # opening: rounds the bottom tip
+        sx = width / (maxx - minx)
+        sy = sx if height is None else height / (maxy - miny)
+        p = sscale(p, sx, sy, origin=(0, 0))
+        p = p.buffer(dip_r, 64).buffer(-dip_r, 64)        # closing: rounds the concave dip
+        p = p.buffer(-tip_r, 64).buffer(tip_r, 64)        # opening: rounds the bottom tip
     minx, miny, maxx, maxy = p.bounds
     p = stranslate(p, -(minx + maxx) / 2, -(miny + maxy) / 2)
     p = orient(p, 1.0)
@@ -110,6 +118,26 @@ def sweep(P, Nn, prof):
 def offset_curve(P, Nn, d):
     return Polygon(P + d * Nn)
 
+def centre_line_y(poly):
+    """y of the top-centre (dip) and bottom-centre (tip) points on the symmetry axis."""
+    cut = LineString([(0, -1000), (0, 1000)]).intersection(poly.exterior)
+    ys = sorted(g.y for g in getattr(cut, "geoms", [cut]))
+    return ys[-1], ys[0]
+
+def outer_heart(R):
+    """Plain heart around the rim outline R: an even BAND-wide border (its offset makes the top dip crisp),
+    and a pointed bottom made from the two tangent lines of the lower flanks, lightly rounded."""
+    from shapely.geometry import box, MultiPoint
+    B = BAND
+    O = R.buffer(B, 128)
+    _, y_tip_in = centre_line_y(R)
+    tip = (0.0, y_tip_in - B * TIP_SHARP)
+    minx, miny, maxx, maxy = O.bounds
+    lower = O.intersection(box(minx - 1, miny - 1, maxx + 1, (miny + maxy) / 2))
+    cone = MultiPoint(list(lower.exterior.coords) + [tip]).convex_hull
+    O = unary_union([O, cone]).buffer(-OUT_TIP_R, 64).buffer(OUT_TIP_R, 64)
+    return orient(O, 1.0)
+
 # ---------------------------------------------------------------- star-shaped outline sampling (for the plate loft)
 def ray_outline(poly, center, n=900):
     th = np.linspace(0, 2 * math.pi, n, endpoint=False)
@@ -134,14 +162,44 @@ def frame(D, style):
     d_sc = d_rim + 5.0                             # scallop centre offset
     f = FILLET
 
-    # scallop centres along the offset curve, symmetric, one at the top centre
-    sc_poly = base.buffer(d_sc, 64)
-    S, Ls = resample(orient(sc_poly, 1.0).exterior.coords, 2000)
-    SN = normals(S)
-    n_sc = max(10, int(round(Ls / SCALLOP_STEP / 2)) * 2)
-    idx = (np.arange(n_sc) * len(S) / n_sc).astype(int)
-    rp = 0.55 * Ls / n_sc
-    scal = unary_union([sc_poly] + [Point(*S[i]).buffer(rp, 64) for i in idx])
+    R_rim = base.buffer(d_rim, 64)
+    flowers, leaves = [], []                       # (x, y, size, angle)
+    if OUTLINE == "scallop":
+        # scallop centres along the offset curve, symmetric, one at the top centre
+        sc_poly = base.buffer(d_sc, 64)
+        S, Ls = resample(orient(sc_poly, 1.0).exterior.coords, 2000)
+        SN = normals(S)
+        n_sc = max(10, int(round(Ls / SCALLOP_STEP / 2)) * 2)
+        idx = (np.arange(n_sc) * len(S) / n_sc).astype(int)
+        rp = 0.55 * Ls / n_sc
+        scal = unary_union([sc_poly] + [Point(*S[i]).buffer(rp, 64) for i in idx])
+        hole_c = S[idx[0]]
+        for k, i in enumerate(idx):
+            a = math.atan2(SN[i, 1], SN[i, 0])
+            if k: flowers.append((*(S[i] + 0.30 * rp * SN[i]), 1.05 * rp, a))
+            j = (i + len(S) // (2 * n_sc)) % len(S)
+            leaves.append((*(S[j] - SN[j] * (d_sc - d_rim - 1.6)), 0.75 * rp, math.atan2(SN[j, 1], SN[j, 0])))
+    else:
+        # plain heart outer frame; decoration runs along the middle of the border band
+        scal = outer_heart(R_rim)
+        y_dip_in, _ = centre_line_y(R_rim)
+        y_dip_out, _ = centre_line_y(scal)
+        hole_c = np.array([0.0, (y_dip_in + y_dip_out) / 2])
+        midc = orient(R_rim.buffer(BAND / 2, 128), 1.0)          # middle of the border band
+        Q, Lq = resample(midc.exterior.coords, 1600)
+        QN = normals(Q)
+        size = (BAND - 3.4) / 1.14                                  # flower fits the flat part of the band
+        n_f = max(8, int(round(Lq / (2.2 * size) / 2)) * 2)
+        for k in range(n_f):
+            i = int(k * len(Q) / n_f)
+            if k: flowers.append((Q[i, 0], Q[i, 1], size, math.atan2(QN[i, 1], QN[i, 0])))
+            j = int((k + 0.5) * len(Q) / n_f) % len(Q)
+            stem = Q[j] - QN[j] * 0.40 * size
+            leaves.append((stem[0], stem[1], 0.95 * size, math.atan2(QN[j, 1], QN[j, 0])))
+        _, y_tip_out = centre_line_y(scal)
+        _, y_tip_mid = centre_line_y(midc)
+        if y_tip_mid - y_tip_out > 1.6 * size:                     # one more (smaller) flower in the pointed tip
+            flowers.append((0.0, y_tip_mid - 1.3 * size, 0.8 * size, -math.pi / 2))
     center = (0.0, (scal.bounds[1] + scal.bounds[3]) / 2 - 0.08 * (scal.bounds[3] - scal.bounds[1]))
     out = ray_outline(scal, center)
     Rtip = np.linalg.norm(out, axis=1).max()
@@ -163,7 +221,6 @@ def frame(D, style):
     body = plate + rim
     bore = offset_curve(P, Nn, G)
     body = body - Manifold.extrude(to_cs(bore), H + 2).translate([0, 0, -1])
-    hole_c = S[idx[0]]
     body = body - Manifold.cylinder(H + 2, HANG_HOLE_D / 2, HANG_HOLE_D / 2, 32).translate([hole_c[0], hole_c[1], -1])
     m = H / 2
     body = body - sweep(P, Nn, [(G - 0.2, m - GROOVE - 0.5), (G + GROOVE, m - 0.3), (G + GROOVE, m + 0.3), (G - 0.2, m + GROOVE + 0.5)])
@@ -173,22 +230,13 @@ def frame(D, style):
 
     # ---- decoration ----
     hole = Point(*hole_c).buffer(HANG_HOLE_D / 2 + 1.2, 24)
-    plate_face = scal.buffer(-(f + 0.9)).difference(base.buffer(d_rim + 0.9, 64)).difference(hole)
+    plate_face = scal.buffer(-(f + 0.9)).difference(R_rim.buffer(0.9, 64)).difference(hole)
     e = f + 0.4
     rim_face = base.buffer(d_rim - e, 64).difference(offset_curve(P, Nn, G + e))
 
     def motifs():
-        shapes = []
-        for k, i in enumerate(idx):
-            if k == 0: continue                                    # hanging-hole scallop
-            a = math.atan2(SN[i, 1], SN[i, 0])
-            cx, cy = S[i] + 0.30 * rp * SN[i]
-            shapes.append(mini_flower(cx, cy, 1.05 * rp, a))
-        for k in range(n_sc):                                      # leaf pairs between scallops
-            i = (idx[k] + len(S) // (2 * n_sc)) % len(S)
-            q = S[i] - SN[i] * (d_sc - d_rim - 1.6)
-            a = math.atan2(SN[i, 1], SN[i, 0])
-            shapes.append(leaf_pair(q[0], q[1], 0.75 * rp, a))
+        shapes = [mini_flower(x, y, sz, a) for x, y, sz, a in flowers]
+        shapes += [leaf_pair(x, y, sz, a) for x, y, sz, a in leaves]
         plate_m = unary_union(shapes).intersection(plate_face)
         dm = G + RIM_WIDTH / 2
         n_w = int(round(L / 12.0))
