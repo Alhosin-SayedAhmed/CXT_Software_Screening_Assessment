@@ -54,6 +54,8 @@ PEG_HOLE_DEPTH = 1.2     # mm, hole depth (six layers), a bit deeper than the po
 NAME_RECESS_MARGIN = 0.8 # mm, plain rectangular recess under the piece = the floor name's box + this
 NAME_RECESS_DEPTH = 0.8  # mm, recess depth (four layers); the 0.6 mm name never touches it
 RIB_R          = 0.5     # mm, rib radius on the pocket wall (sticks 0.3 mm past the 0.2 mm gap)
+RIB_SEAT_R_SMALL = 0.42  # mm, small pockets have no post: tighter seats (0.08 mm squeeze per rib) ...
+RIB_SPACING_SMALL = 8.0  # mm  ... and ribs closer together
 RIB_SEAT_R     = 0.50    # mm, matching notch in the piece edge (same size as the rib: slides in, no squeeze)
 RIB_SPACING    = 14.0    # mm along the pocket wall between ribs
 RIB_MIN        = 3       # at least this many ribs per pocket
@@ -368,8 +370,9 @@ def main():
         for key, pk in pockets.items():
             body, txt, em = names[key]
             ftxt, peg, rect = None, None, None
-            # small pockets: shrink the floor name further until a post fits clear of its box
-            for sc in (PEG_FLOOR_NAME_SCALE, 0.65, 0.5, 0.4, 0.3):
+            # post only if it fits beside the full-size floor name; otherwise it is a small
+            # pocket: full-size name, no post, held by more and tighter ribs
+            for sc in (1.0,):                        # floor names are never shrunk
                 ft, rc = None, None
                 if txt is not None and not txt.is_empty:
                     ft = affinity.scale(txt, sc, sc, origin=txt.centroid)
@@ -387,11 +390,17 @@ def main():
                 ftxt, rect = ft, rc
                 if peg:
                     break
+            if not peg and txt is not None and not txt.is_empty:
+                ftxt = txt
+                rect = txt.minimum_rotated_rectangle.buffer(NAME_RECESS_MARGIN, join_style=2)
             ring = pk.exterior
-            n = max(RIB_MIN, int(ring.length // RIB_SPACING))
+            n = max(RIB_MIN, int(ring.length // RIB_SPACING)) if peg else max(RIB_MIN + 1, int(ring.length // RIB_SPACING_SMALL))
             ribs = [ring.interpolate((i + 0.5) / n, normalized=True) for i in range(n)]
             locks[key] = (ftxt, peg, ribs, rect)
-        print(f'  peg style: posts in {sum(1 for v in locks.values() if v[1])}/{len(locks)} pockets')
+        print(f'  peg style: posts in {sum(1 for v in locks.values() if v[1])}/{len(locks)} pockets; '
+              f'rib-only (small): {[k for k, v in locks.items() if not v[1]]}')
+        json.dump({k: dict(post=bool(v[1]), ribs=len(v[2])) for k, v in locks.items()},
+                  open(os.path.join(out, 'locks_report.json'), 'w'), ensure_ascii=False, indent=1)
 
     # ---- board
     board = extrude(board_outline, 0, TOP)
@@ -474,7 +483,8 @@ def main():
                 r = (d + PEG_HOLE_EXTRA) / 2
                 solid = solid - m3d.Manifold.cylinder(PEG_HOLE_DEPTH + 1, r, r, 48).translate([x, y, -1])
             # seats for the wall ribs: small notches in the piece edge
-            seats = unary_union([Point(p.x, p.y).buffer(RIB_SEAT_R, 24) for p in locks[key][2]])
+            seat_r = RIB_SEAT_R if peg else RIB_SEAT_R_SMALL
+            seats = unary_union([Point(p.x, p.y).buffer(seat_r, 24) for p in locks[key][2]])
             solid = solid - extrude(seats, -1, PIECE_H + TEXT_H + 2)
         elif txt is not None and not txt.is_empty:
             hollow = txt.buffer(NAME_CLEAR, join_style=1, quad_segs=3).simplify(0.01).intersection(body.buffer(-0.4))
