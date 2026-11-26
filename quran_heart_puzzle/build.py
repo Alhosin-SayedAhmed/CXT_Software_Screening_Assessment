@@ -25,7 +25,7 @@ from fontTools.pens.basePen import BasePen
 HERE = os.path.dirname(os.path.abspath(__file__))
 
 # ---------------------------------------------------------------- CONFIG
-HEART_MAX_SIZE = 238.0   # mm, longest side of the heart drawing (board adds rim + hanger lugs)
+HEART_MAX_SIZE = 246.0   # mm, longest side of the heart drawing (original size; prints diagonally with the hanger lugs)
 BASE_H         = 0.8     # mm, base plate thickness
 WALL_H         = 1.6     # mm, wall height above the base (= pocket depth)
 WALL_T         = 1.6     # mm, thickness of the walls between pockets
@@ -54,7 +54,7 @@ PEG_HOLE_DEPTH = 1.2     # mm, hole depth (six layers), a bit deeper than the po
 NAME_RECESS_MARGIN = 0.8 # mm, plain rectangular recess under the piece = the floor name's box + this
 NAME_RECESS_DEPTH = 0.8  # mm, recess depth (four layers); the 0.6 mm name never touches it
 RIB_R          = 0.5     # mm, rib radius on the pocket wall (sticks 0.3 mm past the 0.2 mm gap)
-RIB_SEAT_R     = 0.45    # mm, matching notch in the piece edge (0.05 mm squeeze on each rib)
+RIB_SEAT_R     = 0.50    # mm, matching notch in the piece edge (same size as the rib: slides in, no squeeze)
 RIB_SPACING    = 14.0    # mm along the pocket wall between ribs
 RIB_MIN        = 3       # at least this many ribs per pocket
 # hanger: separate banner part that plugs into two lugs on top of the heart
@@ -76,14 +76,9 @@ KNOB_CLEAR     = 0.15    # mm gap per side in the jigsaw joint
 # the hanger lies level with the heart (original look). Its jigsaw knobs are slightly
 # tapered: a hair smaller than the socket at the front, a hair bigger at the back. Pushed in
 # from behind, each knob wedges tight in its socket and cannot pass through to the front.
-# snap lock: a V groove runs round the inside of each socket at mid-thickness; the hanger's
-# knob is split down the middle and has V bumps on its sides that click into the groove.
-SNAP_GROOVE    = 0.40    # mm groove depth into the socket wall
-SNAP_BUMP      = 0.32    # mm bump height on the knob sides
-SNAP_HALF      = 0.60    # mm half-height of the V (45 degree flanks, prints without support)
-SNAP_KNOB_GAP  = 0.07    # mm per side between knob and socket outside the groove
-SNAP_SLIT      = 1.0     # mm slit down the knob so its halves flex
-SNAP_STEPS     = 12      # slices used to build the V shapes
+# the hanger sockets in the heart are blind (closed at the back by the base), so the knob
+# cannot pass through; the knob is a snug fit
+HANGER_KNOB_CLEAR = 0.07 # mm per side between knob and socket
 PLATE          = 250.0   # mm usable square on the A1 plate
 PLATE_GAP      = 3.0     # mm between pieces on a plate
 
@@ -402,17 +397,8 @@ def main():
     board = extrude(board_outline, 0, TOP)
     # opening removes zero-width wall pinches where two pocket corners meet
     cut = extrude(unary_union(list(pockets.values())).buffer(-0.15, join_style=1).buffer(0.12, join_style=1), BASE_H, WALL_H + 1)
-    board = board - cut - extrude(unary_union(sockets), -1, TOP + 2)
-    # V groove inside each socket (hidden; the heart's size and outline are unchanged)
-    zc = TOP / 2
-    for i in range(SNAP_STEPS):
-        z_a = zc - SNAP_HALF + 2 * SNAP_HALF * i / SNAP_STEPS
-        z_m = z_a + SNAP_HALF / SNAP_STEPS
-        g = SNAP_GROOVE * max(0.0, 1 - abs(z_m - zc) / SNAP_HALF)
-        if g > 0.01:
-            ring = unary_union([sk.buffer(g, join_style=1) for sk in sockets]).intersection(
-                shapely.geometry.box(-1e3, -1e3, 1e3, y_join + 2))
-            board = board - extrude(ring, z_a, 2 * SNAP_HALF / SNAP_STEPS + 0.001)
+    # hanger sockets are closed at the bottom: blind pockets from the front with the 0.8 mm base as floor
+    board = board - cut - extrude(unary_union(sockets), BASE_H, TOP + 2)
     if LOCK_STYLE == 'peg':
         floor_txt = unary_union([v[0] for v in locks.values() if v[0] is not None])
         board = board + extrude(floor_txt, BASE_H - 0.01, PEG_FLOOR_NAME_H + 0.01)
@@ -430,8 +416,18 @@ def main():
     btx = affinity.scale(btx, -1, 1, origin=btx.centroid)
     board = board - extrude(btx, -1, 1 + BRAND_DEPTH)
     print(f'  back engraving "{BRAND_TEXT}" {btx.bounds[2]-btx.bounds[0]:.0f} mm wide, {BRAND_DEPTH} mm deep')
-    to_trimesh(board).export(os.path.join(out, 'board.stl'))
-    print('  board.stl written')
+    to_trimesh(board).export(os.path.join(out, 'board_upright.stl'))
+    # print file: turned on the plate so it fits the A1 (256 x 256) when it is taller than the plate
+    best = (1e9, 0.0)
+    for ang in np.arange(0, 180, 0.5):
+        bb = affinity.rotate(board_outline, ang, origin=(0, 0)).bounds
+        m_ = max(bb[2] - bb[0], bb[3] - bb[1])
+        if m_ < best[0]:
+            best = (m_, float(ang))
+    bb0 = board_outline.bounds
+    print_ang = 0.0 if max(bb0[2] - bb0[0], bb0[3] - bb0[1]) <= 250 else best[1]
+    to_trimesh(board.rotate([0, 0, print_ang])).export(os.path.join(out, 'board.stl'))
+    print(f'  board.stl written (turned {print_ang:.1f} deg on the plate, footprint {best[0]:.0f} mm)')
 
     # ---- hanger banner
     cx = outline.centroid.x                      # hang above the centre of mass
@@ -450,22 +446,8 @@ def main():
     text_area = band.buffer(-3.5)
     btxt, bem = fit_text(HANGER_TEXT, text_area, font=HANGER_FONT, angles=(0,), max_em=40)
     hanger = extrude(banner, 0, TOP)
-    zc = TOP / 2
-    for x in lug_x:
-        base = socket_shape(x, -SNAP_KNOB_GAP)
-        knob = extrude(base, 0, TOP)
-        sides = shapely.geometry.box(-1e3, -1e3, 1e3, y_join - 0.5).difference(
-            shapely.geometry.box(x - 1.8, -1e3, x + 1.8, 1e3))          # bumps only where the halves can flex
-        for i in range(SNAP_STEPS):
-            z_a = zc - SNAP_HALF + 2 * SNAP_HALF * i / SNAP_STEPS
-            z_m = z_a + SNAP_HALF / SNAP_STEPS
-            b = SNAP_BUMP * max(0.0, 1 - abs(z_m - zc) / SNAP_HALF)
-            if b > 0.01:
-                bump = base.buffer(b, join_style=1).difference(base.buffer(-0.3, join_style=1)).intersection(sides)   # overlaps into the knob so it fuses
-                knob = knob + extrude(bump, z_a - 0.001, 2 * SNAP_HALF / SNAP_STEPS + 0.002)
-        slit = shapely.geometry.box(x - SNAP_SLIT / 2, head_y - KNOB_R - 2, x + SNAP_SLIT / 2, y_join - 1.2)
-        knob = knob - extrude(slit, -1, TOP + 2)
-        hanger = hanger + knob
+    for x in lug_x:   # knob fills the blind socket from the front, sitting on its floor
+        hanger = hanger + extrude(socket_shape(x, -HANGER_KNOB_CLEAR), BASE_H + 0.02, TOP - BASE_H - 0.02)
     if btxt is not None:
         hanger = hanger + extrude(btxt, TOP - 0.01, TEXT_H + 0.01)
     to_trimesh(hanger).export(os.path.join(out, 'hanger_assembled.stl'))
