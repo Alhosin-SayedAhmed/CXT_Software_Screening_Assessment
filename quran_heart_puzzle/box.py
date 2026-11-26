@@ -43,6 +43,16 @@ AXIS_OUT     = 1.0     # mm, gap between the heart outline and the barrels
 PIN_D        = 1.75    # mm, pin = a piece of 1.75 mm filament
 PIN_HOLE_BOX = 1.95    # mm, hole in the box barrels (holds the pin)
 PIN_HOLE_LID = 2.25    # mm, hole in the lid barrel (turns freely)
+# front clip on the hinged box: a tab hangs from the lid over a small flat at the heart's tip,
+# a ridge inside the tab clicks into a groove on the box front
+TIP_FLAT     = 6.5     # mm cut off the heart's tip to give the clip a flat face
+CLIP_W       = 9.0     # mm tab width
+CLIP_T       = 1.4     # mm tab thickness (thin enough to flex)
+CLIP_GAP     = 0.15    # mm between tab and box front
+CLIP_DOWN    = 8.0     # mm the tab reaches below the lid
+CLIP_RIDGE   = 0.5     # mm ridge on the inside of the tab
+CLIP_GROOVE  = 0.65    # mm groove depth in the box front
+CLIP_Z       = 4.5     # mm ridge centre below the rim
 
 
 def heart(width):
@@ -118,7 +128,11 @@ def main():
 
 
 def hinged(outer, inner):
-    """Design 2: same heart box, lid joined to the box by two pinned hinges on the back."""
+    """Design 2: same heart box, lid joined to the box by two pinned hinges on the back,
+    and a snap clip at the front so it stays shut."""
+    yf = outer.bounds[1] + TIP_FLAT           # flat front face for the clip
+    outer = outer.intersection(shapely.geometry.box(-1e3, yf, 1e3, 1e3))
+    inner = outer.buffer(-WALL, join_style=1)
     top = BOX_H + LID_T                       # lid top in use
     az = top - KNUCKLE_R - 0.05               # hinge axis height: barrel top just under the lid top
     pts = np.asarray(outer.exterior.coords)
@@ -158,6 +172,12 @@ def hinged(outer, inner):
     box = box - hollow - thumb_notch(outer) - brand_cut(outer)
     for h in box_holes:
         box = box - h
+    # clip: V groove across the flat front face of the box
+    flat_w = outer.intersection(shapely.geometry.box(-1e3, yf - 0.01, 1e3, yf + 0.01)).bounds
+    cw = min(CLIP_W, (flat_w[2] - flat_w[0]) - 1.0)
+    zc = BOX_H - CLIP_Z
+    groove = Polygon([(yf - 1, zc - CLIP_GROOVE - 1), (yf + CLIP_GROOVE, zc), (yf - 1, zc + CLIP_GROOVE + 1)])
+    box = box - profile_along_x(groove, -cw / 2 - 0.6, cw / 2 + 0.6)
     to_trimesh(box).export(os.path.join(HERE, 'box_hinged_base.stl'))
 
     lip_out = inner.buffer(-H_LID_CLEAR, join_style=1)
@@ -165,6 +185,15 @@ def hinged(outer, inner):
     lid = extrude(lip_out.difference(lip_in), BOX_H - H_LIP_H, H_LIP_H + 0.01) + extrude(outer, BOX_H, LID_T)
     for p in lid_parts:
         lid = lid + p
+    # clip tab hanging from the lid's front edge, ridge inside, finger lip outside at the bottom
+    yi = yf - CLIP_GAP                       # tab inner face
+    yo = yi - CLIP_T                         # tab outer face
+    zb = BOX_H - CLIP_DOWN
+    tab = unary(Polygon([(yo, zb), (yi, zb), (yi, top - 0.03), (yo, top - 0.03)]),
+                shapely.geometry.box(yo, BOX_H + 0.03, yf + 1.5, top - 0.03))
+    ridge = Polygon([(yi - 0.2, zc - CLIP_RIDGE - 0.2), (yi + CLIP_RIDGE, zc), (yi - 0.2, zc + CLIP_RIDGE + 0.2)])
+    lip = Polygon([(yo + 0.2, zb), (yo - 1.6, zb), (yo + 0.2, zb + 2.2)])   # outward finger lip, 45 degrees
+    lid = lid + profile_along_x(unary(tab, ridge, lip), -cw / 2, cw / 2)
     cut, em = lid_text(outer, top)
     lid = lid - cut
     for h in lid_holes:
@@ -175,6 +204,7 @@ def hinged(outer, inner):
     pin_len = 3 * KNUCKLE_L + 2 * KNUCKLE_GAP - 0.5
     print(f'hinged box: axis y={ay:.2f} z={az:.2f}, hinges at x={lobe_x[0]:.1f} / {lobe_x[1]:.1f}, '
           f'2 pins of {PIN_D} mm filament, {pin_len:.0f} mm long')
+    print(f'front clip: tab {cw:.1f} mm wide, ridge {CLIP_RIDGE} mm into a {CLIP_GROOVE} mm groove')
     json.dump(dict(axis_y=ay, axis_z=az, lobe_x=lobe_x, box_h=BOX_H, top=top), open(os.path.join(HERE, 'box_hinged_axis.json'), 'w'))
 
 
