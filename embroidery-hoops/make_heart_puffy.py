@@ -33,7 +33,24 @@ RIPPLE_L  = 6.5      # ripple spacing (mm)
 GRID      = 1.25     # height-field resolution (mm)
 DECO_H    = 0.6      # front flowers stand this much above the dome
 RIPPLES   = False    # option B (soft ripples) - the chosen design is A (smooth)
+MOTIF     = "hearts" # decoration: "hearts" or "flowers"
 H, SEG, ARC, FILLET = v2.H, v2.SEG, v2.ARC, v2.FILLET
+
+_UNIT_HEART = None
+def heart_motif(cx, cy, size, ang):
+    """Small classic heart that fits the same circle as mini_flower (radius ~0.6*size), tilted by (ang - 90 deg)."""
+    global _UNIT_HEART
+    from shapely.affinity import scale as sscale, rotate as srotate, translate as stranslate
+    if _UNIT_HEART is None:
+        from make_heart_round import classic_heart
+        hh = classic_heart(10.0)                                   # lobe radius 10 -> ~35 x 33 units
+        minx, miny, maxx, maxy = hh.bounds
+        hh = stranslate(hh, -(minx + maxx) / 2, -(miny + maxy) / 2)
+        _UNIT_HEART = sscale(hh, 1 / max(maxx - minx, maxy - miny), 1 / max(maxx - minx, maxy - miny), origin=(0, 0))
+    d = 1.15 * size                                                # heart width ~ the flower's diameter
+    m = sscale(_UNIT_HEART, d, d, origin=(0, 0))
+    m = srotate(m, math.degrees(ang) - 90.0, origin=(0, 0))
+    return stranslate(m, cx, cy).simplify(0.03)
 
 def height(t, ripples, u=None):
     """t = distance inside the heart edge, u = distance outside the rim (mm)."""
@@ -85,6 +102,7 @@ def frame(D, style="bedside", ripples=RIPPLES):
     from make_heart_round import flower_fill
     from make_heart_hoops import ray_outline
     from make_hoops_v2 import loft, mini_flower, wave_band
+    motif = heart_motif if MOTIF == "hearts" else mini_flower
     from shapely.ops import polylabel
     Ri = (D + 2 * v2.RING_WALL) / 2 + v2.FABRIC_GAP
     Ro = Ri + v2.RIM_WIDTH
@@ -111,7 +129,7 @@ def frame(D, style="bedside", ripples=RIPPLES):
     front_face = heart.buffer(-5.0).difference(Point(0, 0).buffer(Ro + 3.0, 256)).difference(hole)
     flowers = flower_fill(front_face.buffer(-0.3), min_r=3.0, max_size=0.42 * rl)
     clean = lambda gg: unary_union([x for x in getattr(gg, "geoms", [gg]) if x.area > 1.0]).simplify(0.03)
-    pf = clean(unary_union([mini_flower(x, y, sz, a) for x, y, sz, a in flowers]).intersection(front_face))
+    pf = clean(unary_union([motif(x, y, sz, a) for x, y, sz, a in flowers]).intersection(front_face))
     body = body + (Manifold.extrude(to_cs(pf), 20.0) ^ heightfield_solid(heart, ripples, lift=DECO_H))
     e = f + 0.4
     rim_face = Point(0, 0).buffer(Ro - e, 256).difference(Point(0, 0).buffer(Ri + e, 256))
@@ -130,7 +148,7 @@ def frame(D, style="bedside", ripples=RIPPLES):
     # ---- bed side: the same flowers raised, background recessed (bridged, no supports) ----
     if style == "bedside":
         back_face = heart.buffer(-(bev + 1.3)).difference(Point(0, 0).buffer(Ro + 0.9, 256)).difference(hole)
-        pb = clean(unary_union([mini_flower(x, y, sz, a) for x, y, sz, a in flowers]).intersection(back_face))
+        pb = clean(unary_union([motif(x, y, sz, a) for x, y, sz, a in flowers]).intersection(back_face))
         back_rim = Point(0, 0).buffer(Ro - e, 256).difference(Point(0, 0).buffer(Ri + c + e, 256))
         rb = clean(wave_band((Ri + c + Ro) / 2, 0.9, 24, 1.0).intersection(back_rim))
         bg = unary_union([back_face.difference(pb), back_rim.difference(rb)])
