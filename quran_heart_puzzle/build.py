@@ -27,11 +27,11 @@ HERE = os.path.dirname(os.path.abspath(__file__))
 # ---------------------------------------------------------------- CONFIG
 HEART_MAX_SIZE = 246.0   # mm, longest side of the heart drawing (original size; prints diagonally with the hanger lugs)
 BASE_H         = 0.8     # mm, base plate thickness
-WALL_H         = 1.6     # mm, wall height above the base (= pocket depth)
+WALL_H         = 2.0     # mm, wall height above the base (= pocket depth)
 WALL_T         = 1.6     # mm, thickness of the walls between pockets
 RIM_T          = 3.0     # mm, thickness of the outer rim of the heart
 CLEARANCE      = 0.20    # mm, gap per side between piece and pocket
-PIECE_H        = 1.6     # mm, piece body thickness (flush with the walls)
+PIECE_H        = 2.0     # mm, piece body thickness (flush with the walls)
 TEXT_H         = 1.0     # mm, raised name height
 TEXT_MARGIN    = 0.8     # mm, keep text this far from the piece edge
 TEXT_MAX_EM    = 10.0    # mm, largest font size used
@@ -43,20 +43,32 @@ NAME_CLEAR     = 0.12    # mm, gap per side between raised name and hollow
 RECESS_DEPTH   = 1.2     # mm, hollow depth under the piece (> FLOOR_TEXT_H)
 # LOCK_STYLE 'peg': the pocket floor name is only a low guide, a round post (placed clear
 # of the name) locates the piece, and crush ribs on the pocket walls hold it by pressure.
+# pockets that never get a post (chosen by hand): full-size floor name, held by the ribs only
+NO_POST = {'الإخلاص', 'المسد', 'الفلق', 'الكافرون', 'النصر', 'الكوثر', 'العاديات', 'القدر', 'الطارق', 'الفجر',
+           'الأعلى', 'الغاشية', 'الإنسان', 'الصف', 'ق', 'الذاريات', 'الزخرف', 'الرحمن', 'الجاثية', 'الدخان',
+           'النمل', 'الصافات', 'طه', 'مريم', 'الأنبياء', 'المؤمنون', 'الفرقان', 'الحج', 'الكهف', 'إبراهيم',
+           'الروم', 'لقمان', 'التوبة', 'الأعراف', 'البقرة', 'النساء', 'الأنفال'}
 LOCK_STYLE     = os.environ.get('LOCK_STYLE', 'peg')    # 'peg' (current) or 'name' (older version)
 PEG_FLOOR_NAME_H = 0.6   # mm, floor name height (three layers)
 PEG_FLOOR_NAME_SCALE = 0.8  # floor name drawn a bit smaller than the piece name, leaving room for the post
 PEG_DIAMETERS  = (3.5, 3.0, 2.5, 2.0)  # mm, largest post that fits clear of the name is used
-PEG_H          = 1.0     # mm, post height above the floor (five layers)
+PEG_H          = 0.8     # mm, post height above the floor (four layers)
 PEG_NAME_GAP   = 1.0     # mm, minimum gap between the post and the name
 PEG_HOLE_EXTRA = 0.1     # mm, hole diameter under the piece = post diameter + this (tight clip)
-PEG_HOLE_DEPTH = 1.2     # mm, hole depth (six layers), a bit deeper than the post
+PEG_HOLE_DEPTH = 1.0     # mm, hole depth (five layers), deeper than the post
 NAME_RECESS_MARGIN = 0.8 # mm, plain rectangular recess under the piece = the floor name's box + this
-NAME_RECESS_DEPTH = 0.8  # mm, recess depth (four layers); the 0.6 mm name never touches it
+NAME_RECESS_DEPTH = 1.0  # mm, recess depth (five layers); the 0.6 mm name never touches it
 RIB_R          = 0.5     # mm, rib radius on the pocket wall (sticks 0.3 mm past the 0.2 mm gap)
 RIB_SEAT_R_SMALL = 0.42  # mm, small pockets have no post: tighter seats (0.08 mm squeeze per rib) ...
 RIB_SPACING_SMALL = 8.0  # mm  ... and ribs closer together
-RIB_SEAT_R     = 0.50    # mm, matching notch in the piece edge (same size as the rib: slides in, no squeeze)
+RIB_SEAT_R     = 0.50    # mm, matching notch in the piece edge (same size as the rib)
+# snap barb on every rib: gentle slope on top (easy in), steep below (hard out); the piece
+# edge has a matching groove at that height that the barb clicks into
+RIB_BARB       = 0.15    # mm the barb sticks out beyond the rib
+RIB_BARB_Z0    = 0.35    # mm above the pocket floor where the barb starts
+RIB_BARB_LOW   = 0.20    # mm height of the steep lower face
+RIB_BARB_UP    = 0.70    # mm height of the gentle upper slope
+RIB_GROOVE_GAP = 0.03    # mm clearance between barb and groove
 RIB_SPACING    = 14.0    # mm along the pocket wall between ribs
 RIB_MIN        = 3       # at least this many ribs per pocket
 # hanger: separate banner part that plugs into two lugs on top of the heart
@@ -372,7 +384,7 @@ def main():
             ftxt, peg, rect = None, None, None
             # post only if it fits beside the full-size floor name; otherwise it is a small
             # pocket: full-size name, no post, held by more and tighter ribs
-            for sc in (1.0,):                        # floor names are never shrunk
+            for sc in (() if key in NO_POST else (1.0,)):   # floor names are never shrunk
                 ft, rc = None, None
                 if txt is not None and not txt.is_empty:
                     ft = affinity.scale(txt, sc, sc, origin=txt.centroid)
@@ -416,7 +428,12 @@ def main():
                 x, y, d = peg
                 board = board + m3d.Manifold.cylinder(PEG_H + 0.01, d / 2, d / 2, 48).translate([x, y, BASE_H - 0.01])
             for p in ribs:
-                board = board + m3d.Manifold.cylinder(WALL_H + 0.01, RIB_R, RIB_R, 16).translate([p.x, p.y, BASE_H - 0.01])
+                z0 = BASE_H - 0.01
+                zs = [z0, BASE_H + RIB_BARB_Z0, BASE_H + RIB_BARB_Z0 + RIB_BARB_LOW,
+                      BASE_H + RIB_BARB_Z0 + RIB_BARB_LOW + RIB_BARB_UP, TOP]
+                rs = [RIB_R, RIB_R, RIB_R + RIB_BARB, RIB_R, RIB_R]
+                for za, zb, ra, rb in zip(zs[:-1], zs[1:], rs[:-1], rs[1:]):
+                    board = board + m3d.Manifold.cylinder(zb - za + 0.01, ra, rb, 20).translate([p.x, p.y, za])
     else:
         floor_txt = unary_union([t for _, t, _ in names.values() if t is not None])
         board = board + extrude(floor_txt, BASE_H - 0.01, FLOOR_TEXT_H + 0.01)
@@ -483,9 +500,11 @@ def main():
                 r = (d + PEG_HOLE_EXTRA) / 2
                 solid = solid - m3d.Manifold.cylinder(PEG_HOLE_DEPTH + 1, r, r, 48).translate([x, y, -1])
             # seats for the wall ribs: small notches in the piece edge
-            seat_r = RIB_SEAT_R if peg else RIB_SEAT_R_SMALL
-            seats = unary_union([Point(p.x, p.y).buffer(seat_r, 24) for p in locks[key][2]])
+            seats = unary_union([Point(p.x, p.y).buffer(RIB_SEAT_R, 24) for p in locks[key][2]])
             solid = solid - extrude(seats, -1, PIECE_H + TEXT_H + 2)
+            # groove for the rib barbs (straight, a hair bigger than the barb)
+            grooves = unary_union([Point(p.x, p.y).buffer(RIB_R + RIB_BARB + RIB_GROOVE_GAP, 24) for p in locks[key][2]])
+            solid = solid - extrude(grooves, RIB_BARB_Z0 - RIB_GROOVE_GAP, RIB_BARB_LOW + RIB_BARB_UP + 2 * RIB_GROOVE_GAP)
         elif txt is not None and not txt.is_empty:
             hollow = txt.buffer(NAME_CLEAR, join_style=1, quad_segs=3).simplify(0.01).intersection(body.buffer(-0.4))
             solid = solid - extrude(hollow, -1, RECESS_DEPTH + 1)

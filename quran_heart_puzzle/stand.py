@@ -21,7 +21,7 @@ HERE = os.path.dirname(os.path.abspath(__file__))
 
 # ---------------------------------------------------------------- CONFIG
 TILT        = 15.0    # deg the heart leans back from vertical
-BOARD_T     = 2.4     # mm board thickness at the rim
+BOARD_T     = 2.8     # mm board thickness at the rim
 SLOT_CLEAR  = 0.35    # mm gap each side of the board in the slot
 EDGE_CLEAR  = 0.5     # mm gap between the heart outline and the cradle
 CUP_H       = 14.0    # mm, how far up the heart's bottom the cradle reaches
