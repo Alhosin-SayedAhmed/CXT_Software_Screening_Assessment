@@ -23,8 +23,11 @@ from make_heart_hoops import centre_line_y
 SIZES     = [60, 80, 100]
 MARGIN    = 10.0     # narrowest border between rim and heart edge
 Z_EDGE    = 1.6      # thickness at the outer edge
-Z_RISE    = 5.6      # how much the cushion rises toward the inside
-RISE_LEN  = 9.0      # mm over which it rises (smaller = rounder edge)
+Z_PEAK    = 14.0     # cushion height in the lobes / point (puffiness)
+EDGE_W    = 16.0     # width of the rounded outer shoulder (quarter-ellipse)
+Z_RIMJOIN = 7.2      # cushion height where it meets the round rim (rim top = 9 mm)
+INNER_W   = 14.0     # width of the rounded slope up from the rim
+SOFT_K    = 1.6      # softness of the blend between the outer shoulder and the inner slope
 RIPPLE_A  = 0.45     # ripple amplitude (mm), 0 = smooth
 RIPPLE_L  = 6.5      # ripple spacing (mm)
 GRID      = 1.25     # height-field resolution (mm)
@@ -32,9 +35,15 @@ DECO_H    = 0.6      # front flowers stand this much above the dome
 RIPPLES   = False    # option B (soft ripples) - the chosen design is A (smooth)
 H, SEG, ARC, FILLET = v2.H, v2.SEG, v2.ARC, v2.FILLET
 
-def height(t, ripples):
-    """t = distance inside the heart edge (mm)."""
-    z = Z_EDGE + Z_RISE * (1 - np.exp(-np.maximum(t, 0) / RISE_LEN))
+def height(t, ripples, u=None):
+    """t = distance inside the heart edge, u = distance outside the rim (mm)."""
+    q = np.clip(t / EDGE_W, 0, 1)
+    z = Z_EDGE + (Z_PEAK - Z_EDGE) * np.sqrt(1 - (1 - q) ** 2)            # rounded outer shoulder
+    if u is not None:
+        w = np.clip(u / INNER_W, 0, 1)
+        zi = Z_RIMJOIN + (Z_PEAK - Z_RIMJOIN) * np.sqrt(1 - (1 - w) ** 2)  # rounded slope up from the rim
+        z = -SOFT_K * np.logaddexp(-z / SOFT_K, -zi / SOFT_K)               # smooth minimum
+        z = np.maximum(z, Z_EDGE)
     if ripples:
         fade = np.clip((t - 3.0) / 4.0, 0, 1)                    # keep the outer edge clean
         z = z + RIPPLE_A * fade * np.sin(2 * math.pi * t / RIPPLE_L)
@@ -47,7 +56,8 @@ def heightfield_solid(heart, ripples, lift=0.0):
     X, Y = np.meshgrid(xs, ys)
     pts = shapely.points(X.ravel(), Y.ravel())
     t = shapely.distance(heart.exterior, pts) * np.where(shapely.contains(heart, pts), 1, -1)
-    Z = height(t.reshape(X.shape), ripples) + lift
+    u = np.hypot(X, Y) - heightfield_solid.r_rim
+    Z = height(t.reshape(X.shape), ripples, u) + lift
     ny, nx = Z.shape
     top = np.c_[X.ravel(), Y.ravel(), Z.ravel()]
     bot = np.c_[X.ravel(), Y.ravel(), np.full(X.size, -1.0)]
@@ -80,6 +90,7 @@ def frame(D, style="bedside", ripples=RIPPLES):
     Ro = Ri + v2.RIM_WIDTH
     f, c = FILLET, v2.RING_CHAMF
     heart, rl = heart_around(Ro + MARGIN)
+    heightfield_solid.r_rim = Ro
     out = ray_outline(heart, (0.0, 0.0))
     Rtip = np.linalg.norm(out, axis=1).max()
     bev = v2.BACK_BEVEL if style == "bedside" else 0.0
@@ -97,7 +108,7 @@ def frame(D, style="bedside", ripples=RIPPLES):
     y_dip, _ = centre_line_y(heart)
     hole_c = (0.0, (Ro + y_dip) / 2)
     hole = Point(*hole_c).buffer(v2.HANG_HOLE_D / 2 + 1.4, 24)
-    front_face = heart.buffer(-3.0).difference(Point(0, 0).buffer(Ro + 1.2, 256)).difference(hole)
+    front_face = heart.buffer(-5.0).difference(Point(0, 0).buffer(Ro + 3.0, 256)).difference(hole)
     flowers = flower_fill(front_face.buffer(-0.3), min_r=3.0, max_size=0.42 * rl)
     clean = lambda gg: unary_union([x for x in getattr(gg, "geoms", [gg]) if x.area > 1.0]).simplify(0.03)
     pf = clean(unary_union([mini_flower(x, y, sz, a) for x, y, sz, a in flowers]).intersection(front_face))
