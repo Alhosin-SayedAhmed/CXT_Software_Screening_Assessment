@@ -1,0 +1,800 @@
+[
+ {
+  "number": 1,
+  "name": "الفاتحة",
+  "font_mm": 6.88,
+  "width_mm": 32.0,
+  "height_mm": 29.0
+ },
+ {
+  "number": 2,
+  "name": "البقرة",
+  "font_mm": 5.77,
+  "width_mm": 14.5,
+  "height_mm": 16.7
+ },
+ {
+  "number": 3,
+  "name": "آل عمران",
+  "font_mm": 3.85,
+  "width_mm": 26.2,
+  "height_mm": 36.2
+ },
+ {
+  "number": 4,
+  "name": "النساء",
+  "font_mm": 5.38,
+  "width_mm": 15.4,
+  "height_mm": 16.9
+ },
+ {
+  "number": 5,
+  "name": "المائدة",
+  "font_mm": 6.2,
+  "width_mm": 20.2,
+  "height_mm": 18.2
+ },
+ {
+  "number": 6,
+  "name": "الأنعام",
+  "font_mm": 6.97,
+  "width_mm": 27.0,
+  "height_mm": 12.9
+ },
+ {
+  "number": 7,
+  "name": "الأعراف",
+  "font_mm": 5.09,
+  "width_mm": 17.1,
+  "height_mm": 15.7
+ },
+ {
+  "number": 8,
+  "name": "الأنفال",
+  "font_mm": 5.07,
+  "width_mm": 17.1,
+  "height_mm": 20.6
+ },
+ {
+  "number": 9,
+  "name": "التوبة",
+  "font_mm": 4.04,
+  "width_mm": 15.5,
+  "height_mm": 21.3
+ },
+ {
+  "number": 10,
+  "name": "يونس",
+  "font_mm": 8.58,
+  "width_mm": 22.2,
+  "height_mm": 29.2
+ },
+ {
+  "number": 11,
+  "name": "هود",
+  "font_mm": 10.0,
+  "width_mm": 17.2,
+  "height_mm": 30.0
+ },
+ {
+  "number": 12,
+  "name": "يوسف",
+  "font_mm": 6.51,
+  "width_mm": 27.4,
+  "height_mm": 15.9
+ },
+ {
+  "number": 13,
+  "name": "الرعد",
+  "font_mm": 5.63,
+  "width_mm": 20.1,
+  "height_mm": 10.0
+ },
+ {
+  "number": 14,
+  "name": "إبراهيم",
+  "font_mm": 4.54,
+  "width_mm": 21.7,
+  "height_mm": 11.5
+ },
+ {
+  "number": 15,
+  "name": "الحجر",
+  "font_mm": 6.68,
+  "width_mm": 18.7,
+  "height_mm": 17.2
+ },
+ {
+  "number": 16,
+  "name": "النحل",
+  "font_mm": 7.77,
+  "width_mm": 24.9,
+  "height_mm": 19.9
+ },
+ {
+  "number": 17,
+  "name": "الإسراء",
+  "font_mm": 6.9,
+  "width_mm": 27.5,
+  "height_mm": 13.6
+ },
+ {
+  "number": 18,
+  "name": "الكهف",
+  "font_mm": 4.43,
+  "width_mm": 17.3,
+  "height_mm": 13.8
+ },
+ {
+  "number": 19,
+  "name": "مريم",
+  "font_mm": 7.26,
+  "width_mm": 20.9,
+  "height_mm": 17.6
+ },
+ {
+  "number": 20,
+  "name": "طه",
+  "font_mm": 5.48,
+  "width_mm": 22.2,
+  "height_mm": 7.0
+ },
+ {
+  "number": 21,
+  "name": "الأنبياء",
+  "font_mm": 5.86,
+  "width_mm": 17.1,
+  "height_mm": 17.8
+ },
+ {
+  "number": 22,
+  "name": "الحج",
+  "font_mm": 6.2,
+  "width_mm": 17.7,
+  "height_mm": 13.8
+ },
+ {
+  "number": 23,
+  "name": "المؤمنون",
+  "font_mm": 3.64,
+  "width_mm": 18.9,
+  "height_mm": 16.0
+ },
+ {
+  "number": 24,
+  "name": "النور",
+  "font_mm": 8.68,
+  "width_mm": 18.8,
+  "height_mm": 19.8
+ },
+ {
+  "number": 25,
+  "name": "الفرقان",
+  "font_mm": 5.22,
+  "width_mm": 19.4,
+  "height_mm": 12.5
+ },
+ {
+  "number": 26,
+  "name": "الشعراء",
+  "font_mm": 4.82,
+  "width_mm": 22.2,
+  "height_mm": 10.9
+ },
+ {
+  "number": 27,
+  "name": "النمل",
+  "font_mm": 4.39,
+  "width_mm": 15.5,
+  "height_mm": 23.6
+ },
+ {
+  "number": 28,
+  "name": "القصص",
+  "font_mm": 5.91,
+  "width_mm": 17.5,
+  "height_mm": 25.9
+ },
+ {
+  "number": 29,
+  "name": "العنكبوت",
+  "font_mm": 5.87,
+  "width_mm": 24.6,
+  "height_mm": 20.4
+ },
+ {
+  "number": 30,
+  "name": "الروم",
+  "font_mm": 5.74,
+  "width_mm": 16.7,
+  "height_mm": 16.1
+ },
+ {
+  "number": 31,
+  "name": "لقمان",
+  "font_mm": 5.55,
+  "width_mm": 17.9,
+  "height_mm": 19.2
+ },
+ {
+  "number": 32,
+  "name": "السجدة",
+  "font_mm": 5.91,
+  "width_mm": 20.8,
+  "height_mm": 18.6
+ },
+ {
+  "number": 33,
+  "name": "الأحزاب",
+  "font_mm": 5.36,
+  "width_mm": 22.2,
+  "height_mm": 20.9
+ },
+ {
+  "number": 34,
+  "name": "سبأ",
+  "font_mm": 7.37,
+  "width_mm": 18.4,
+  "height_mm": 14.7
+ },
+ {
+  "number": 35,
+  "name": "فاطر",
+  "font_mm": 4.89,
+  "width_mm": 14.3,
+  "height_mm": 15.6
+ },
+ {
+  "number": 36,
+  "name": "يس",
+  "font_mm": 9.61,
+  "width_mm": 24.0,
+  "height_mm": 33.8
+ },
+ {
+  "number": 37,
+  "name": "الصافات",
+  "font_mm": 3.75,
+  "width_mm": 17.0,
+  "height_mm": 15.9
+ },
+ {
+  "number": 38,
+  "name": "ص",
+  "font_mm": 10.0,
+  "width_mm": 14.4,
+  "height_mm": 19.0
+ },
+ {
+  "number": 39,
+  "name": "الزمر",
+  "font_mm": 7.67,
+  "width_mm": 11.9,
+  "height_mm": 23.5
+ },
+ {
+  "number": 40,
+  "name": "غافر",
+  "font_mm": 10.0,
+  "width_mm": 35.6,
+  "height_mm": 20.4
+ },
+ {
+  "number": 41,
+  "name": "فصلت",
+  "font_mm": 7.12,
+  "width_mm": 26.8,
+  "height_mm": 25.9
+ },
+ {
+  "number": 42,
+  "name": "الشورى",
+  "font_mm": 5.66,
+  "width_mm": 17.5,
+  "height_mm": 23.9
+ },
+ {
+  "number": 43,
+  "name": "الزخرف",
+  "font_mm": 5.45,
+  "width_mm": 20.2,
+  "height_mm": 17.8
+ },
+ {
+  "number": 44,
+  "name": "الدخان",
+  "font_mm": 5.83,
+  "width_mm": 18.3,
+  "height_mm": 28.5
+ },
+ {
+  "number": 45,
+  "name": "الجاثية",
+  "font_mm": 5.94,
+  "width_mm": 21.3,
+  "height_mm": 23.0
+ },
+ {
+  "number": 46,
+  "name": "الأحقاف",
+  "font_mm": 6.76,
+  "width_mm": 22.5,
+  "height_mm": 23.4
+ },
+ {
+  "number": 47,
+  "name": "محمد",
+  "font_mm": 7.4,
+  "width_mm": 21.2,
+  "height_mm": 18.2
+ },
+ {
+  "number": 48,
+  "name": "الفتح",
+  "font_mm": 7.23,
+  "width_mm": 22.6,
+  "height_mm": 22.1
+ },
+ {
+  "number": 49,
+  "name": "الحجرات",
+  "font_mm": 5.56,
+  "width_mm": 26.3,
+  "height_mm": 17.6
+ },
+ {
+  "number": 50,
+  "name": "ق",
+  "font_mm": 10.0,
+  "width_mm": 19.3,
+  "height_mm": 18.1
+ },
+ {
+  "number": 51,
+  "name": "الذاريات",
+  "font_mm": 4.97,
+  "width_mm": 20.0,
+  "height_mm": 20.8
+ },
+ {
+  "number": 52,
+  "name": "الطور",
+  "font_mm": 8.0,
+  "width_mm": 17.9,
+  "height_mm": 33.4
+ },
+ {
+  "number": 53,
+  "name": "النجم",
+  "font_mm": 9.24,
+  "width_mm": 24.8,
+  "height_mm": 26.6
+ },
+ {
+  "number": 54,
+  "name": "القمر",
+  "font_mm": 7.74,
+  "width_mm": 20.3,
+  "height_mm": 19.3
+ },
+ {
+  "number": 55,
+  "name": "الرحمن",
+  "font_mm": 5.14,
+  "width_mm": 19.0,
+  "height_mm": 22.2
+ },
+ {
+  "number": 56,
+  "name": "الواقعة",
+  "font_mm": 7.22,
+  "width_mm": 28.0,
+  "height_mm": 23.5
+ },
+ {
+  "number": 57,
+  "name": "الحديد",
+  "font_mm": 7.2,
+  "width_mm": 18.6,
+  "height_mm": 21.2
+ },
+ {
+  "number": 58,
+  "name": "المجادلة",
+  "font_mm": 5.59,
+  "width_mm": 25.1,
+  "height_mm": 23.5
+ },
+ {
+  "number": 59,
+  "name": "الحشر",
+  "font_mm": 4.06,
+  "width_mm": 15.2,
+  "height_mm": 16.0
+ },
+ {
+  "number": 60,
+  "name": "الممتحنة",
+  "font_mm": 5.35,
+  "width_mm": 26.7,
+  "height_mm": 29.5
+ },
+ {
+  "number": 61,
+  "name": "الصف",
+  "font_mm": 6.14,
+  "width_mm": 13.2,
+  "height_mm": 27.7
+ },
+ {
+  "number": 62,
+  "name": "الجمعة",
+  "font_mm": 7.43,
+  "width_mm": 21.7,
+  "height_mm": 22.1
+ },
+ {
+  "number": 63,
+  "name": "المنافقون",
+  "font_mm": 6.47,
+  "width_mm": 32.2,
+  "height_mm": 26.7
+ },
+ {
+  "number": 64,
+  "name": "التغابن",
+  "font_mm": 7.42,
+  "width_mm": 19.4,
+  "height_mm": 27.6
+ },
+ {
+  "number": 65,
+  "name": "الطلاق",
+  "font_mm": 8.0,
+  "width_mm": 19.8,
+  "height_mm": 26.0
+ },
+ {
+  "number": 66,
+  "name": "التحريم",
+  "font_mm": 4.85,
+  "width_mm": 19.1,
+  "height_mm": 14.3
+ },
+ {
+  "number": 67,
+  "name": "الملك",
+  "font_mm": 7.24,
+  "width_mm": 25.4,
+  "height_mm": 11.8
+ },
+ {
+  "number": 68,
+  "name": "القلم",
+  "font_mm": 6.91,
+  "width_mm": 16.4,
+  "height_mm": 22.7
+ },
+ {
+  "number": 69,
+  "name": "الحاقة",
+  "font_mm": 7.05,
+  "width_mm": 23.3,
+  "height_mm": 24.4
+ },
+ {
+  "number": 70,
+  "name": "المعارج",
+  "font_mm": 5.65,
+  "width_mm": 20.5,
+  "height_mm": 20.5
+ },
+ {
+  "number": 71,
+  "name": "نوح",
+  "font_mm": 10.0,
+  "width_mm": 20.3,
+  "height_mm": 18.9
+ },
+ {
+  "number": 72,
+  "name": "الجن",
+  "font_mm": 7.63,
+  "width_mm": 18.5,
+  "height_mm": 19.0
+ },
+ {
+  "number": 73,
+  "name": "المزمل",
+  "font_mm": 5.59,
+  "width_mm": 20.2,
+  "height_mm": 17.5
+ },
+ {
+  "number": 74,
+  "name": "المدثر",
+  "font_mm": 5.94,
+  "width_mm": 31.2,
+  "height_mm": 13.2
+ },
+ {
+  "number": 75,
+  "name": "القيامة",
+  "font_mm": 5.33,
+  "width_mm": 15.3,
+  "height_mm": 24.4
+ },
+ {
+  "number": 76,
+  "name": "الإنسان",
+  "font_mm": 3.79,
+  "width_mm": 16.0,
+  "height_mm": 17.7
+ },
+ {
+  "number": 77,
+  "name": "المرسلات",
+  "font_mm": 5.09,
+  "width_mm": 24.3,
+  "height_mm": 18.1
+ },
+ {
+  "number": 78,
+  "name": "النبأ",
+  "font_mm": 9.12,
+  "width_mm": 18.3,
+  "height_mm": 18.5
+ },
+ {
+  "number": 79,
+  "name": "النازعات",
+  "font_mm": 5.12,
+  "width_mm": 17.3,
+  "height_mm": 17.2
+ },
+ {
+  "number": 80,
+  "name": "عبس",
+  "font_mm": 6.59,
+  "width_mm": 14.6,
+  "height_mm": 19.1
+ },
+ {
+  "number": 81,
+  "name": "التكوير",
+  "font_mm": 5.34,
+  "width_mm": 17.0,
+  "height_mm": 20.2
+ },
+ {
+  "number": 82,
+  "name": "الانفطار",
+  "font_mm": 4.79,
+  "width_mm": 22.0,
+  "height_mm": 15.2
+ },
+ {
+  "number": 83,
+  "name": "المطففين",
+  "font_mm": 5.17,
+  "width_mm": 26.7,
+  "height_mm": 22.9
+ },
+ {
+  "number": 84,
+  "name": "الانشقاق",
+  "font_mm": 4.28,
+  "width_mm": 17.7,
+  "height_mm": 23.9
+ },
+ {
+  "number": 85,
+  "name": "البروج",
+  "font_mm": 5.81,
+  "width_mm": 20.6,
+  "height_mm": 18.2
+ },
+ {
+  "number": 86,
+  "name": "الطارق",
+  "font_mm": 5.24,
+  "width_mm": 15.3,
+  "height_mm": 14.4
+ },
+ {
+  "number": 87,
+  "name": "الأعلى",
+  "font_mm": 5.32,
+  "width_mm": 16.8,
+  "height_mm": 12.8
+ },
+ {
+  "number": 88,
+  "name": "الغاشية",
+  "font_mm": 5.41,
+  "width_mm": 20.9,
+  "height_mm": 17.8
+ },
+ {
+  "number": 89,
+  "name": "الفجر",
+  "font_mm": 6.85,
+  "width_mm": 17.9,
+  "height_mm": 11.9
+ },
+ {
+  "number": 90,
+  "name": "البلد",
+  "font_mm": 7.8,
+  "width_mm": 17.9,
+  "height_mm": 10.2
+ },
+ {
+  "number": 91,
+  "name": "الشمس",
+  "font_mm": 4.75,
+  "width_mm": 21.1,
+  "height_mm": 14.5
+ },
+ {
+  "number": 92,
+  "name": "الليل",
+  "font_mm": 7.46,
+  "width_mm": 23.2,
+  "height_mm": 17.3
+ },
+ {
+  "number": 93,
+  "name": "الضحى",
+  "font_mm": 6.48,
+  "width_mm": 23.7,
+  "height_mm": 28.5
+ },
+ {
+  "number": 94,
+  "name": "الشرح",
+  "font_mm": 5.85,
+  "width_mm": 23.1,
+  "height_mm": 17.5
+ },
+ {
+  "number": 95,
+  "name": "التين",
+  "font_mm": 9.62,
+  "width_mm": 37.2,
+  "height_mm": 16.8
+ },
+ {
+  "number": 96,
+  "name": "العلق",
+  "font_mm": 8.93,
+  "width_mm": 21.2,
+  "height_mm": 27.8
+ },
+ {
+  "number": 97,
+  "name": "القدر",
+  "font_mm": 6.95,
+  "width_mm": 23.8,
+  "height_mm": 15.9
+ },
+ {
+  "number": 98,
+  "name": "البينة",
+  "font_mm": 7.54,
+  "width_mm": 13.1,
+  "height_mm": 34.7
+ },
+ {
+  "number": 99,
+  "name": "الزلزلة",
+  "font_mm": 6.81,
+  "width_mm": 20.3,
+  "height_mm": 26.7
+ },
+ {
+  "number": 100,
+  "name": "العاديات",
+  "font_mm": 4.4,
+  "width_mm": 23.8,
+  "height_mm": 12.4
+ },
+ {
+  "number": 101,
+  "name": "القارعة",
+  "font_mm": 7.01,
+  "width_mm": 31.5,
+  "height_mm": 20.2
+ },
+ {
+  "number": 102,
+  "name": "التكاثر",
+  "font_mm": 7.86,
+  "width_mm": 26.1,
+  "height_mm": 16.9
+ },
+ {
+  "number": 103,
+  "name": "العصر",
+  "font_mm": 7.5,
+  "width_mm": 22.8,
+  "height_mm": 24.7
+ },
+ {
+  "number": 104,
+  "name": "الهمزة",
+  "font_mm": 7.72,
+  "width_mm": 28.3,
+  "height_mm": 18.3
+ },
+ {
+  "number": 105,
+  "name": "الفيل",
+  "font_mm": 7.94,
+  "width_mm": 23.5,
+  "height_mm": 23.3
+ },
+ {
+  "number": 106,
+  "name": "قريش",
+  "font_mm": 6.29,
+  "width_mm": 15.6,
+  "height_mm": 25.4
+ },
+ {
+  "number": 107,
+  "name": "الماعون",
+  "font_mm": 6.12,
+  "width_mm": 29.9,
+  "height_mm": 19.4
+ },
+ {
+  "number": 108,
+  "name": "الكوثر",
+  "font_mm": 7.25,
+  "width_mm": 23.2,
+  "height_mm": 14.0
+ },
+ {
+  "number": 109,
+  "name": "الكافرون",
+  "font_mm": 4.14,
+  "width_mm": 20.1,
+  "height_mm": 16.4
+ },
+ {
+  "number": 110,
+  "name": "النصر",
+  "font_mm": 5.29,
+  "width_mm": 17.5,
+  "height_mm": 21.7
+ },
+ {
+  "number": 111,
+  "name": "المسد",
+  "font_mm": 4.26,
+  "width_mm": 15.2,
+  "height_mm": 13.0
+ },
+ {
+  "number": 112,
+  "name": "الإخلاص",
+  "font_mm": 3.34,
+  "width_mm": 15.5,
+  "height_mm": 13.6
+ },
+ {
+  "number": 113,
+  "name": "الفلق",
+  "font_mm": 6.03,
+  "width_mm": 21.1,
+  "height_mm": 13.7
+ },
+ {
+  "number": 114,
+  "name": "الناس",
+  "font_mm": 7.15,
+  "width_mm": 27.8,
+  "height_mm": 16.7
+ }
+]

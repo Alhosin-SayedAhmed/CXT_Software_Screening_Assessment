@@ -1,0 +1,458 @@
+{
+ "البقرة": {
+  "post": false,
+  "ribs": 5
+ },
+ "الفاتحة": {
+  "post": false,
+  "ribs": 11
+ },
+ "الأنعام": {
+  "post": false,
+  "ribs": 7
+ },
+ "النساء": {
+  "post": false,
+  "ribs": 5
+ },
+ "المائدة": {
+  "post": false,
+  "ribs": 6
+ },
+ "آل عمران": {
+  "post": false,
+  "ribs": 12
+ },
+ "الأعراف": {
+  "post": false,
+  "ribs": 5
+ },
+ "الأنفال": {
+  "post": false,
+  "ribs": 6
+ },
+ "هود": {
+  "post": false,
+  "ribs": 8
+ },
+ "يونس": {
+  "post": false,
+  "ribs": 9
+ },
+ "الرعد": {
+  "post": false,
+  "ribs": 5
+ },
+ "إبراهيم": {
+  "post": false,
+  "ribs": 5
+ },
+ "يوسف": {
+  "post": false,
+  "ribs": 7
+ },
+ "التوبة": {
+  "post": false,
+  "ribs": 6
+ },
+ "الإسراء": {
+  "post": false,
+  "ribs": 7
+ },
+ "الحجر": {
+  "post": false,
+  "ribs": 5
+ },
+ "الروم": {
+  "post": false,
+  "ribs": 5
+ },
+ "الكهف": {
+  "post": false,
+  "ribs": 5
+ },
+ "النحل": {
+  "post": false,
+  "ribs": 7
+ },
+ "طه": {
+  "post": false,
+  "ribs": 5
+ },
+ "العنكبوت": {
+  "post": false,
+  "ribs": 8
+ },
+ "الشعراء": {
+  "post": false,
+  "ribs": 6
+ },
+ "لقمان": {
+  "post": false,
+  "ribs": 5
+ },
+ "النور": {
+  "post": false,
+  "ribs": 7
+ },
+ "الحج": {
+  "post": false,
+  "ribs": 5
+ },
+ "مريم": {
+  "post": false,
+  "ribs": 6
+ },
+ "القصص": {
+  "post": false,
+  "ribs": 7
+ },
+ "الأنبياء": {
+  "post": false,
+  "ribs": 6
+ },
+ "الفرقان": {
+  "post": false,
+  "ribs": 5
+ },
+ "السجدة": {
+  "post": false,
+  "ribs": 7
+ },
+ "النمل": {
+  "post": false,
+  "ribs": 6
+ },
+ "ص": {
+  "post": false,
+  "ribs": 6
+ },
+ "المؤمنون": {
+  "post": false,
+  "ribs": 5
+ },
+ "الصافات": {
+  "post": false,
+  "ribs": 6
+ },
+ "الأحقاف": {
+  "post": false,
+  "ribs": 8
+ },
+ "الزمر": {
+  "post": false,
+  "ribs": 6
+ },
+ "سبأ": {
+  "post": false,
+  "ribs": 6
+ },
+ "الأحزاب": {
+  "post": false,
+  "ribs": 6
+ },
+ "الشورى": {
+  "post": false,
+  "ribs": 6
+ },
+ "يس": {
+  "post": false,
+  "ribs": 12
+ },
+ "الجاثية": {
+  "post": false,
+  "ribs": 7
+ },
+ "غافر": {
+  "post": false,
+  "ribs": 9
+ },
+ "محمد": {
+  "post": false,
+  "ribs": 6
+ },
+ "فاطر": {
+  "post": false,
+  "ribs": 5
+ },
+ "الدخان": {
+  "post": false,
+  "ribs": 7
+ },
+ "الفتح": {
+  "post": false,
+  "ribs": 7
+ },
+ "الرحمن": {
+  "post": false,
+  "ribs": 7
+ },
+ "القمر": {
+  "post": false,
+  "ribs": 7
+ },
+ "فصلت": {
+  "post": false,
+  "ribs": 8
+ },
+ "الزخرف": {
+  "post": false,
+  "ribs": 6
+ },
+ "النجم": {
+  "post": false,
+  "ribs": 9
+ },
+ "الحجرات": {
+  "post": false,
+  "ribs": 7
+ },
+ "الواقعة": {
+  "post": false,
+  "ribs": 8
+ },
+ "ق": {
+  "post": false,
+  "ribs": 6
+ },
+ "الذاريات": {
+  "post": false,
+  "ribs": 6
+ },
+ "الطور": {
+  "post": false,
+  "ribs": 8
+ },
+ "الجمعة": {
+  "post": false,
+  "ribs": 8
+ },
+ "الحديد": {
+  "post": false,
+  "ribs": 6
+ },
+ "المنافقون": {
+  "post": false,
+  "ribs": 10
+ },
+ "التغابن": {
+  "post": false,
+  "ribs": 7
+ },
+ "الممتحنة": {
+  "post": false,
+  "ribs": 10
+ },
+ "المجادلة": {
+  "post": false,
+  "ribs": 7
+ },
+ "الطلاق": {
+  "post": false,
+  "ribs": 8
+ },
+ "الحشر": {
+  "post": false,
+  "ribs": 5
+ },
+ "الصف": {
+  "post": false,
+  "ribs": 7
+ },
+ "المطففين": {
+  "post": false,
+  "ribs": 7
+ },
+ "نوح": {
+  "post": false,
+  "ribs": 7
+ },
+ "المعارج": {
+  "post": false,
+  "ribs": 8
+ },
+ "الجن": {
+  "post": false,
+  "ribs": 6
+ },
+ "الحاقة": {
+  "post": false,
+  "ribs": 8
+ },
+ "القيامة": {
+  "post": false,
+  "ribs": 6
+ },
+ "الملك": {
+  "post": false,
+  "ribs": 6
+ },
+ "المزمل": {
+  "post": false,
+  "ribs": 6
+ },
+ "القلم": {
+  "post": false,
+  "ribs": 6
+ },
+ "النازعات": {
+  "post": false,
+  "ribs": 7
+ },
+ "المدثر": {
+  "post": false,
+  "ribs": 8
+ },
+ "النبأ": {
+  "post": false,
+  "ribs": 7
+ },
+ "عبس": {
+  "post": false,
+  "ribs": 6
+ },
+ "البروج": {
+  "post": false,
+  "ribs": 6
+ },
+ "الانفطار": {
+  "post": false,
+  "ribs": 6
+ },
+ "التكوير": {
+  "post": false,
+  "ribs": 6
+ },
+ "التحريم": {
+  "post": false,
+  "ribs": 5
+ },
+ "الإنسان": {
+  "post": false,
+  "ribs": 5
+ },
+ "الفجر": {
+  "post": false,
+  "ribs": 6
+ },
+ "الانشقاق": {
+  "post": false,
+  "ribs": 7
+ },
+ "الشمس": {
+  "post": false,
+  "ribs": 6
+ },
+ "الطارق": {
+  "post": false,
+  "ribs": 5
+ },
+ "المرسلات": {
+  "post": false,
+  "ribs": 7
+ },
+ "الليل": {
+  "post": false,
+  "ribs": 6
+ },
+ "العلق": {
+  "post": false,
+  "ribs": 8
+ },
+ "البلد": {
+  "post": false,
+  "ribs": 5
+ },
+ "الأعلى": {
+  "post": false,
+  "ribs": 5
+ },
+ "القدر": {
+  "post": false,
+  "ribs": 7
+ },
+ "الضحى": {
+  "post": false,
+  "ribs": 8
+ },
+ "الغاشية": {
+  "post": false,
+  "ribs": 6
+ },
+ "الزلزلة": {
+  "post": false,
+  "ribs": 8
+ },
+ "التين": {
+  "post": false,
+  "ribs": 9
+ },
+ "التكاثر": {
+  "post": false,
+  "ribs": 7
+ },
+ "الشرح": {
+  "post": false,
+  "ribs": 6
+ },
+ "البينة": {
+  "post": false,
+  "ribs": 8
+ },
+ "القارعة": {
+  "post": false,
+  "ribs": 8
+ },
+ "العصر": {
+  "post": false,
+  "ribs": 7
+ },
+ "العاديات": {
+  "post": false,
+  "ribs": 6
+ },
+ "الهمزة": {
+  "post": false,
+  "ribs": 8
+ },
+ "الماعون": {
+  "post": false,
+  "ribs": 8
+ },
+ "قريش": {
+  "post": false,
+  "ribs": 6
+ },
+ "الفيل": {
+  "post": false,
+  "ribs": 7
+ },
+ "الكوثر": {
+  "post": false,
+  "ribs": 6
+ },
+ "النصر": {
+  "post": false,
+  "ribs": 6
+ },
+ "الكافرون": {
+  "post": false,
+  "ribs": 5
+ },
+ "المسد": {
+  "post": false,
+  "ribs": 5
+ },
+ "الإخلاص": {
+  "post": false,
+  "ribs": 5
+ },
+ "الفلق": {
+  "post": false,
+  "ribs": 5
+ },
+ "الناس": {
+  "post": false,
+  "ribs": 7
+ }
+}

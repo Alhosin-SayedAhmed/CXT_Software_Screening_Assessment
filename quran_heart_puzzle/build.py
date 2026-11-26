@@ -43,6 +43,8 @@ NAME_CLEAR     = 0.12    # mm, gap per side between raised name and hollow
 RECESS_DEPTH   = 1.2     # mm, hollow depth under the piece (> FLOOR_TEXT_H)
 # LOCK_STYLE 'peg': the pocket floor name is only a low guide, a round post (placed clear
 # of the name) locates the piece, and crush ribs on the pocket walls hold it by pressure.
+# NO_POSTS=1 builds the version without any posts: every pocket is held by the barbed ribs only
+NO_POSTS_AT_ALL = os.environ.get('NO_POSTS', '0') == '1'
 # pockets that never get a post (chosen by hand): full-size floor name, held by the ribs only
 NO_POST = {'الإخلاص', 'المسد', 'الفلق', 'الكافرون', 'النصر', 'الكوثر', 'العاديات', 'القدر', 'الطارق', 'الفجر',
            'الأعلى', 'الغاشية', 'الإنسان', 'الصف', 'ق', 'الذاريات', 'الزخرف', 'الرحمن', 'الجاثية', 'الدخان',
@@ -384,7 +386,7 @@ def main():
             ftxt, peg, rect = None, None, None
             # post only if it fits beside the full-size floor name; otherwise it is a small
             # pocket: full-size name, no post, held by more and tighter ribs
-            for sc in (() if key in NO_POST else (1.0,)):   # floor names are never shrunk
+            for sc in (() if (key in NO_POST or NO_POSTS_AT_ALL) else (1.0,)):   # floor names are never shrunk
                 ft, rc = None, None
                 if txt is not None and not txt.is_empty:
                     ft = affinity.scale(txt, sc, sc, origin=txt.centroid)
