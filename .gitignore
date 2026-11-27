@@ -7,3 +7,7 @@ node_modules/
 /playwright/.cache/
 /playwright/.auth/
 __pycache__/
+
+# regenerable master bundle (built by embroidery-hoops/package_all.py)
+embroidery-hoops/طارات_التطريز_كل_الملفات/
+embroidery-hoops/طارات_التطريز_كل_الملفات.zip
