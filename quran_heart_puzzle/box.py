@@ -33,6 +33,9 @@ NOTCH_W      = 14.0    # mm, thumb notch width in the box rim
 NOTCH_D      = 3.0     # mm, thumb notch depth
 LID_TEXT     = 'خيركم من تعلم القرآن وعلمه'
 LID_TEXT_D   = 0.6     # mm, engraving depth of the lid text
+LID_TEXT_SPLIT = 3     # words on the first line (خيركم من تعلم / القرآن وعلمه)
+LID_LINE_GAP = 1.55    # em between the two line centres
+LID_TEXT_MARGIN = 6.0  # mm from the lid edge to the text
 # hinged design
 H_LIP_H      = 3.0     # mm, shorter lip so it swings clear of the front wall
 H_LID_CLEAR  = 0.25    # mm, gap per side between lip and wall
@@ -85,7 +88,27 @@ def thumb_notch(outer):
 
 
 def lid_text(outer, z_top):
-    txt, em = fit_text(LID_TEXT, outer.buffer(-11), font=HANGER_FONT, angles=(0,), max_em=22)
+    """LID_TEXT on two lines (split at LID_TEXT_SPLIT words), as large as fits inside the lid."""
+    from build import text_shape
+    from shapely.ops import unary_union
+    w = LID_TEXT.split()
+    lines = [' '.join(w[:LID_TEXT_SPLIT]), ' '.join(w[LID_TEXT_SPLIT:])]
+    shapes = [text_shape(t, HANGER_FONT) for t in lines]
+    base = unary_union([affinity.translate(shapes[0], 0, LID_LINE_GAP / 2),
+                        affinity.translate(shapes[1], 0, -LID_LINE_GAP / 2)])
+    area = outer.buffer(-LID_TEXT_MARGIN, join_style=1)
+    best = (0, None)
+    y0, y1 = area.bounds[1], area.bounds[3]
+    for cy in np.linspace(y0, y1, 61):                     # centre on the heart's axis, best height
+        lo, hi = 0.0, 40.0
+        for _ in range(22):
+            mid = (lo + hi) / 2
+            g = affinity.translate(affinity.scale(base, mid, mid, origin=(0, 0)), 0, cy)
+            lo, hi = (mid, hi) if area.contains(g) else (lo, mid)
+        if lo > best[0]:
+            best = (lo, cy)
+    em, cy = best
+    txt = affinity.translate(affinity.scale(base, em, em, origin=(0, 0)), 0, cy)
     return extrude(txt, z_top - LID_TEXT_D, LID_TEXT_D + 1), em
 
 
