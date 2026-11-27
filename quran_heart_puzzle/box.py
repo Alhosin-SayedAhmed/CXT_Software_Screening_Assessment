@@ -23,9 +23,9 @@ HERE = os.path.dirname(os.path.abspath(__file__))
 # ---------------------------------------------------------------- CONFIG
 BOX_W        = 100.0   # mm, outer width of the heart
 BOX_H        = 34.0    # mm, height of the box part (without lid)
-WALL         = 2.0     # mm, side wall thickness
+WALL         = 1.6     # mm, side wall thickness
 FLOOR        = 1.6     # mm, bottom thickness
-LID_T        = 2.4     # mm, lid plate thickness
+LID_T        = 1.8     # mm, lid plate thickness
 LIP_H        = 10.0    # mm, how deep the lid lip goes into the box
 LIP_T        = 1.6     # mm, lip wall thickness
 LID_CLEAR    = 0.15    # mm, gap per side between lip and box wall (snug press fit)
